@@ -937,5 +937,284 @@ def api_members_search():
     return jsonify(members)
 
 
+# ===================== CHARTS API =====================
+
+@app.route("/api/charts/dashboard")
+@login_required
+def api_charts_dashboard():
+    today = date.today()
+
+    # Daily this week
+    labels = []
+    daily_data = []
+    for i in range(6, -1, -1):
+        d = today - timedelta(days=i)
+        labels.append(d.strftime("%d.%m"))
+        count = mongo.db.checkins.count_documents({
+            "timestamp": {
+                "$gte": datetime(d.year, d.month, d.day),
+                "$lt": datetime(d.year, d.month, d.day) + timedelta(days=1)
+            }
+        })
+        daily_data.append(count)
+
+    # Members by type (pie)
+    pie_labels = []
+    pie_data = []
+    pipeline = [{"$group": {"_id": "$membership_type_id", "count": {"$sum": 1}}}]
+    for item in mongo.db.members.aggregate(pipeline):
+        if item["_id"]:
+            t = mongo.db.membership_types.find_one(
+                {"_id": ObjectId(item["_id"])}
+            )
+            name = t["name"] if t else "Nieznany"
+        else:
+            name = "Brak"
+        pie_labels.append(name)
+        pie_data.append(item["count"])
+
+    # Monthly stats
+    month_start = date(today.year, today.month, 1)
+    monthly_checkins = mongo.db.checkins.count_documents({
+        "timestamp": {"$gte": datetime(
+            month_start.year, month_start.month, month_start.day
+        )}
+    })
+
+    total = mongo.db.members.count_documents({})
+    active = sum(1 for m in mongo.db.members.find()
+                 if member_status(m) == "active")
+
+    return jsonify({
+        "daily_labels": labels,
+        "daily_data": daily_data,
+        "pie_labels": pie_labels,
+        "pie_data": pie_data,
+        "monthly_checkins": monthly_checkins,
+        "total_members": total,
+        "active_members": active
+    })
+
+
+# ===================== PAYMENTS =====================
+
+@app.route("/payments")
+@login_required
+def payments():
+    page = int(request.args.get("page", 1))
+    per_page = 30
+    skip = (page - 1) * per_page
+
+    search = request.args.get("search", "").strip()
+    query = {}
+    if search:
+        query["$or"] = [
+            {"member_name": {"$regex": search, "$options": "i"}},
+            {"notes": {"$regex": search, "$options": "i"}},
+        ]
+
+    total = mongo.db.payments.count_documents(query)
+    payments_list = list(mongo.db.payments.find(query)
+                         .sort("date", -1)
+                         .skip(skip)
+                         .limit(per_page))
+
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    total_amount = sum(p.get("amount", 0) for p in mongo.db.payments.find(query))
+
+    return render_template(
+        "payments.html",
+        payments=payments_list,
+        page=page,
+        total_pages=total_pages,
+        total=total,
+        total_amount=total_amount,
+        search=search
+    )
+
+
+@app.route("/payments/add", methods=["GET", "POST"])
+@login_required
+def payment_add():
+    if request.method == "POST":
+        member_id = request.form.get("member_id", "").strip()
+        amount = float(request.form.get("amount", 0))
+        method = request.form.get("method", "cash")
+        notes = request.form.get("notes", "").strip()
+
+        if not member_id or amount <= 0:
+            flash("Wybierz klienta i podaj kwotę.", "danger")
+            members = list(mongo.db.members.find().sort("name", 1))
+            return render_template("payment_form.html", members=members)
+
+        member = mongo.db.members.find_one({"_id": ObjectId(member_id)})
+        member_name = member["name"] if member else "Unknown"
+
+        mongo.db.payments.insert_one({
+            "member_id": member_id,
+            "member_name": member_name,
+            "amount": amount,
+            "method": method,
+            "notes": notes,
+            "date": datetime.now(),
+            "created_by": current_user.id
+        })
+        flash(f"Płatność {amount:.2f} zł dla {member_name} dodana!", "success")
+        return redirect(url_for("payments"))
+
+    members = list(mongo.db.members.find().sort("name", 1))
+    return render_template("payment_form.html", members=members)
+
+
+@app.route("/payments/member/<member_id>")
+@login_required
+def member_payments(member_id):
+    member = mongo.db.members.find_one({"_id": ObjectId(member_id)})
+    if not member:
+        flash("Klient nie istnieje.", "danger")
+        return redirect(url_for("members"))
+
+    payments_list = list(mongo.db.payments.find(
+        {"member_id": member_id}
+    ).sort("date", -1))
+
+    total_paid = sum(p.get("amount", 0) for p in payments_list)
+
+    return render_template(
+        "member_payments.html",
+        member=member,
+        payments=payments_list,
+        total_paid=total_paid
+    )
+
+
+# ===================== CSV EXPORT =====================
+
+@app.route("/export/members")
+@login_required
+def export_members():
+    import csv, io
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "Imię i nazwisko", "Telefon", "Email", "Kod QR",
+        "Status", "Karnet", "Data startu", "Data ważności",
+        "Pozostało wejść", "Notatki"
+    ])
+
+    for m in mongo.db.members.find().sort("name", 1):
+        mt = None
+        if m.get("membership_type_id"):
+            mt = mongo.db.membership_types.find_one(
+                {"_id": ObjectId(m["membership_type_id"])}
+            )
+        st = member_status(m)
+        writer.writerow([
+            m["name"],
+            m.get("phone", ""),
+            m.get("email", ""),
+            m.get("qr_code", ""),
+            st,
+            mt["name"] if mt else "",
+            str(to_date(m.get("start_date"))) if m.get("start_date") else "",
+            str(to_date(m.get("end_date"))) if m.get("end_date") else "",
+            m.get("entries_left", ""),
+            m.get("notes", "")
+        ])
+
+    output.seek(0)
+    from flask import Response
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition": "attachment;filename=klienci.csv",
+            "Content-Type": "text/csv; charset=utf-8"
+        }
+    )
+
+
+@app.route("/export/history")
+@login_required
+def export_history():
+    import csv, io
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "Data", "Klient", "Metoda", "Pracownik"
+    ])
+
+    for c in mongo.db.checkins.find().sort("timestamp", -1):
+        member = mongo.db.members.find_one(
+            {"_id": ObjectId(c["member_id"])}
+        ) if ObjectId.is_valid(c["member_id"]) else None
+        checker = mongo.db.users.find_one(
+            {"_id": ObjectId(c["checked_by"])}
+        ) if ObjectId.is_valid(c["checked_by"]) else None
+        writer.writerow([
+            c["timestamp"].strftime("%d.%m.%Y %H:%M") if isinstance(
+                c.get("timestamp"), datetime
+            ) else str(c.get("timestamp", "")),
+            member["name"] if member else "Usunięty",
+            c.get("method", ""),
+            checker["name"] if checker else ""
+        ])
+
+    output.seek(0)
+    from flask import Response
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition": "attachment;filename=historia_wejsc.csv",
+            "Content-Type": "text/csv; charset=utf-8"
+        }
+    )
+
+
+# ===================== ACTIVITY LOG =====================
+
+@app.route("/api/activity/<member_id>")
+@login_required
+def api_activity(member_id):
+    activities = []
+
+    checkins = list(mongo.db.checkins.find(
+        {"member_id": member_id}
+    ).sort("timestamp", -1).limit(20))
+    for c in checkins:
+        checker = mongo.db.users.find_one(
+            {"_id": ObjectId(c["checked_by"])}
+        ) if ObjectId.is_valid(c["checked_by"]) else None
+        activities.append({
+            "type": "checkin",
+            "icon": "bi-door-open",
+            "title": "Wejście na siłownię",
+            "desc": f"Metoda: {c.get('method', '?')}",
+            "time": c["timestamp"].strftime("%d.%m.%Y %H:%M") if isinstance(
+                c.get("timestamp"), datetime
+            ) else str(c.get("timestamp", "")),
+            "by": checker["name"] if checker else "?"
+        })
+
+    payments_list = list(mongo.db.payments.find(
+        {"member_id": member_id}
+    ).sort("date", -1).limit(20))
+    for p in payments_list:
+        activities.append({
+            "type": "payment",
+            "icon": "bi-cash",
+            "title": f"Płatność {p.get('amount', 0):.2f} zł",
+            "desc": f"Metoda: {p.get('method', '?')}",
+            "time": p["date"].strftime("%d.%m.%Y %H:%M") if isinstance(
+                p.get("date"), datetime
+            ) else str(p.get("date", "")),
+            "by": ""
+        })
+
+    activities.sort(key=lambda x: x["time"], reverse=True)
+    return jsonify(activities[:30])
+
+
 if __name__ == "__main__":
     app.run(debug=False, host="0.0.0.0", port=5000)

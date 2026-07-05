@@ -3,13 +3,13 @@
 {% block content %}
 <div class="row">
     <div class="col-md-4">
-        <div class="card shadow-sm mb-3">
+        <div class="card shadow-sm mb-3 animate-in">
             <div class="card-body text-center">
                 {% if qr_b64 %}
-                <img src="data:image/png;base64,{{ qr_b64 }}" alt="QR Code" class="img-fluid mb-2" style="max-width: 200px;">
+                <img src="data:image/png;base64,{{ qr_b64 }}" alt="QR Code" class="img-fluid mb-2" style="max-width: 180px;">
                 {% endif %}
                 <h5 class="fw-bold">{{ member.name }}</h5>
-                <p class="text-muted mb-1">Kod: {{ member.qr_code }}</p>
+                <p class="text-muted mb-1">Kod: <code>{{ member.qr_code }}</code></p>
                 {% if status == 'active' %}
                     <span class="badge bg-success fs-6">Aktywny</span>
                 {% elif status == 'expired' %}
@@ -20,14 +20,12 @@
             </div>
         </div>
 
-        <div class="card shadow-sm mb-3">
-            <div class="card-header"><h6 class="mb-0">Karnet</h6></div>
+        <div class="card shadow-sm mb-3 animate-in">
+            <div class="card-header"><h6 class="mb-0"><i class="bi bi-tag-fill"></i> Karnet</h6></div>
             <div class="card-body">
                 {% if membership_type %}
                 <p class="mb-1"><strong>Typ:</strong> {{ membership_type.name }}</p>
-                <p class="mb-1">
-                    <strong>Cena:</strong> {{ membership_type.price|currency }}
-                </p>
+                <p class="mb-1"><strong>Cena:</strong> {{ membership_type.price|currency }}</p>
                 <p class="mb-1">
                     <strong>Rodzaj:</strong>
                     {% if membership_type.type == 'period' %}
@@ -55,11 +53,11 @@
             </div>
         </div>
 
-        <div class="card shadow-sm mb-3">
-            <div class="card-header"><h6 class="mb-0">Kontakt</h6></div>
+        <div class="card shadow-sm mb-3 animate-in">
+            <div class="card-header"><h6 class="mb-0"><i class="bi bi-info-circle"></i> Kontakt</h6></div>
             <div class="card-body">
-                <p class="mb-1"><i class="bi bi-telephone"></i> {{ member.phone or '-' }}</p>
-                <p class="mb-1"><i class="bi bi-envelope"></i> {{ member.email or '-' }}</p>
+                <p class="mb-1"><i class="bi bi-telephone-fill"></i> {{ member.phone or '-' }}</p>
+                <p class="mb-1"><i class="bi bi-envelope-fill"></i> {{ member.email or '-' }}</p>
                 {% if member.notes %}
                 <hr>
                 <small class="text-muted">{{ member.notes }}</small>
@@ -67,56 +65,34 @@
             </div>
         </div>
 
-        <div class="d-grid gap-2">
+        <div class="d-grid gap-2 animate-in">
+            <a href="{{ url_for('member_payments', member_id=member._id) }}" class="btn btn-info">
+                <i class="bi bi-cash-coin"></i> Płatności
+            </a>
             <a href="{{ url_for('member_edit', member_id=member._id) }}" class="btn btn-warning">
-                <i class="bi bi-pencil"></i> Edytuj
+                <i class="bi bi-pencil-fill"></i> Edytuj
             </a>
             {% if current_user.is_admin() %}
             <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
-                <i class="bi bi-trash"></i> Usuń
+                <i class="bi bi-trash-fill"></i> Usuń
             </button>
             {% endif %}
         </div>
     </div>
 
     <div class="col-md-8">
-        <div class="card shadow-sm mb-3">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h6 class="mb-0"><i class="bi bi-clock-history"></i> Historia wejść (ostatnie 50)</h6>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Data i czas</th>
-                                <th>Metoda</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for c in checkins %}
-                            <tr>
-                                <td>{{ c.timestamp|datetimefmt }}</td>
-                                <td>
-                                    {% if c.method == 'scan' %}
-                                        <span class="badge bg-info">Skan QR</span>
-                                    {% else %}
-                                        <span class="badge bg-secondary">Ręcznie</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% else %}
-                            <tr>
-                                <td colspan="2" class="text-center text-muted py-4">Brak historii wejść</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+        <div class="card shadow-sm mb-3 animate-in">
+            <div class="card-header"><h6 class="mb-0"><i class="bi bi-activity"></i> Historia aktywności</h6></div>
+            <div class="card-body">
+                <div class="timeline" id="activityTimeline">
+                    <div class="text-center text-muted py-3">
+                        <div class="spinner-border spinner-border-sm me-2"></div> Ładowanie...
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="card shadow-sm">
+        <div class="card shadow-sm animate-in">
             <div class="card-header"><h6 class="mb-0"><i class="bi bi-arrow-clockwise"></i> Odnów karnet</h6></div>
             <div class="card-body">
                 {% if current_user.is_admin() %}
@@ -125,7 +101,7 @@
                         <div class="col-md-8">
                             <select name="membership_type_id" class="form-select" required>
                                 <option value="">-- Wybierz nowy karnet --</option>
-                                {% for t in membership_types or [] %}
+                                {% for t in membership_types %}
                                 <option value="{{ t._id }}">{{ t.name }} - {{ t.price|currency }}</option>
                                 {% endfor %}
                             </select>
@@ -149,13 +125,11 @@
 <div class="modal fade" id="deleteModal">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Potwierdź usunięcie</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
+            <div class="modal-header"><h5 class="modal-title">Potwierdź usunięcie</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
                 Czy na pewno usunąć klienta <strong>{{ member.name }}</strong>?
-                <br><small class="text-danger">Historia wejść również zostanie usunięta.</small>
+                <br><small class="text-danger">Historia wejść i płatności również zostaną usunięte.</small>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuluj</button>
@@ -165,4 +139,25 @@
     </div>
 </div>
 {% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+fetch('/api/activity/{{ member._id }}')
+    .then(r => r.json())
+    .then(data => {
+        const tl = document.getElementById('activityTimeline');
+        if (!data.length) {
+            tl.innerHTML = '<div class="text-center text-muted py-3"><i class="bi bi-inbox fs-2 d-block mb-2"></i>Brak aktywności</div>';
+            return;
+        }
+        tl.innerHTML = data.map(a => `
+            <div class="timeline-item">
+                <div class="time">${a.time}</div>
+                <div class="title"><i class="bi ${a.icon}"></i> ${a.title}</div>
+                <div class="desc">${a.desc} ${a.by ? 'przez ' + a.by : ''}</div>
+            </div>
+        `).join('');
+    });
+</script>
 {% endblock %}

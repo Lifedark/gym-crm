@@ -1,60 +1,62 @@
 {% extends "base.html" %}
 {% block title %}Panel - {{ app_name }}{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h4><i class="bi bi-speedometer2"></i> Panel główny</h4>
+<div class="d-flex justify-content-between align-items-center mb-4 animate-in">
+    <h4 class="fw-bold"><i class="bi bi-grid-1x2-fill"></i> Panel główny</h4>
     <small class="text-muted">{{ now().strftime('%d.%m.%Y %H:%M') }}</small>
 </div>
 
+<div class="row g-3 mb-4" id="statsRow">
+    <div class="col-md-3 animate-in animate-delay-1">
+        <div class="card stat-card stat-primary">
+            <h6>Wszyscy klienci</h6>
+            <h2 id="statTotal">{{ total_members }}</h2>
+            <i class="bi bi-people-fill stat-icon"></i>
+        </div>
+    </div>
+    <div class="col-md-3 animate-in animate-delay-2">
+        <div class="card stat-card stat-success">
+            <h6>Aktywni</h6>
+            <h2 id="statActive">{{ active_members }}</h2>
+            <i class="bi bi-check-circle-fill stat-icon"></i>
+        </div>
+    </div>
+    <div class="col-md-3 animate-in animate-delay-3">
+        <div class="card stat-card stat-warning">
+            <h6>Dzisiejsze wejścia</h6>
+            <h2>{{ today_checkins }}</h2>
+            <i class="bi bi-door-open-fill stat-icon"></i>
+        </div>
+    </div>
+    <div class="col-md-3 animate-in animate-delay-4">
+        <div class="card stat-card stat-danger">
+            <h6>Wygasłe</h6>
+            <h2>{{ expired_members }}</h2>
+            <i class="bi bi-exclamation-triangle-fill stat-icon"></i>
+        </div>
+    </div>
+</div>
+
 <div class="row g-3 mb-4">
-    <div class="col-md-3">
-        <div class="card border-0 shadow-sm bg-primary text-white">
+    <div class="col-md-8 animate-in animate-delay-1">
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-bar-chart-fill"></i> Wejścia w tym tygodniu</span>
+                <span class="badge bg-info" id="monthlyBadge">W tym miesiącu: {{ today_checkins }}</span>
+            </div>
             <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <h6 class="card-title opacity-75">Wszyscy klienci</h6>
-                        <h2 class="mb-0 fw-bold">{{ total_members }}</h2>
-                    </div>
-                    <i class="bi bi-people fs-1 opacity-50"></i>
+                <div class="chart-container">
+                    <canvas id="weeklyChart"></canvas>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card border-0 shadow-sm bg-success text-white">
+    <div class="col-md-4 animate-in animate-delay-2">
+        <div class="card shadow-sm">
+            <div class="card-header"><i class="bi bi-pie-chart-fill"></i> Klienci według karnetu</div>
             <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <h6 class="card-title opacity-75">Aktywni</h6>
-                        <h2 class="mb-0 fw-bold">{{ active_members }}</h2>
-                    </div>
-                    <i class="bi bi-check-circle fs-1 opacity-50"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card border-0 shadow-sm bg-warning text-white">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <h6 class="card-title opacity-75">Dzisiejsze wejścia</h6>
-                        <h2 class="mb-0 fw-bold">{{ today_checkins }}</h2>
-                    </div>
-                    <i class="bi bi-door-open fs-1 opacity-50"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card border-0 shadow-sm bg-danger text-white">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <h6 class="card-title opacity-75">Wygasłe</h6>
-                        <h2 class="mb-0 fw-bold">{{ expired_members }}</h2>
-                    </div>
-                    <i class="bi bi-exclamation-triangle fs-1 opacity-50"></i>
+                <div class="chart-container" style="height: 230px;">
+                    <canvas id="typeChart"></canvas>
                 </div>
             </div>
         </div>
@@ -62,46 +64,40 @@
 </div>
 
 <div class="row g-3">
-    <div class="col-md-6">
+    <div class="col-md-6 animate-in animate-delay-1">
         <div class="card shadow-sm">
-            <div class="card-header">
-                <h6 class="mb-0"><i class="bi bi-alarm"></i> Kończące się karnety (7 dni)</h6>
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-alarm"></i> Kończące się karnety (7 dni)</span>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
                     <table class="table table-hover mb-0">
-                        <thead class="table-light">
+                        <thead>
                             <tr>
                                 <th>Klient</th>
-                                <th>Dni</th>
+                                <th>Zostało</th>
                                 <th>Akcja</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for item in expiring_soon %}
                             <tr>
-                                <td>
-                                    <a href="{{ url_for('member_detail', member_id=item.member._id) }}">
-                                        {{ item.member.name }}
-                                    </a>
-                                </td>
+                                <td><a href="{{ url_for('member_detail', member_id=item.member._id) }}">{{ item.member.name }}</a></td>
                                 <td>
                                     {% if item.remaining == 0 %}
-                                        <span class="badge bg-danger">Dziś</span>
+                                        <span class="badge bg-danger">Dziś!</span>
                                     {% else %}
                                         <span class="badge bg-warning">{{ item.remaining }} dni</span>
                                     {% endif %}
                                 </td>
                                 <td>
-                                    <a href="{{ url_for('member_detail', member_id=item.member._id) }}" class="btn btn-sm btn-outline-primary">
-                                        Odnów
+                                    <a href="{{ url_for('member_detail', member_id=item.member._id) }}" class="btn btn-sm btn-primary">
+                                        <i class="bi bi-arrow-clockwise"></i> Odnów
                                     </a>
                                 </td>
                             </tr>
                             {% else %}
-                            <tr>
-                                <td colspan="3" class="text-center text-muted py-3">Brak kończących się karnetów</td>
-                            </tr>
+                            <tr><td colspan="3" class="text-center text-muted py-4">Brak kończących się karnetów</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
@@ -109,16 +105,13 @@
             </div>
         </div>
     </div>
-
-    <div class="col-md-6">
+    <div class="col-md-6 animate-in animate-delay-2">
         <div class="card shadow-sm">
-            <div class="card-header">
-                <h6 class="mb-0"><i class="bi bi-clock-history"></i> Ostatnie wejścia</h6>
-            </div>
+            <div class="card-header"><i class="bi bi-clock-history"></i> Ostatnie wejścia</div>
             <div class="card-body p-0">
                 <div class="table-responsive">
                     <table class="table table-hover mb-0">
-                        <thead class="table-light">
+                        <thead>
                             <tr>
                                 <th>Klient</th>
                                 <th>Czas</th>
@@ -129,9 +122,7 @@
                             <tr>
                                 <td>
                                     {% if c.member %}
-                                    <a href="{{ url_for('member_detail', member_id=c.member._id) }}">
-                                        {{ c.member.name }}
-                                    </a>
+                                    <a href="{{ url_for('member_detail', member_id=c.member._id) }}">{{ c.member.name }}</a>
                                     {% else %}
                                     <span class="text-muted">Usunięty</span>
                                     {% endif %}
@@ -139,9 +130,7 @@
                                 <td><small>{{ c.timestamp|datetimefmt }}</small></td>
                             </tr>
                             {% else %}
-                            <tr>
-                                <td colspan="2" class="text-center text-muted py-3">Brak wejść</td>
-                            </tr>
+                            <tr><td colspan="2" class="text-center text-muted py-4">Brak wejść</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
@@ -150,4 +139,83 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const ctx1 = document.getElementById('weeklyChart').getContext('2d');
+const ctx2 = document.getElementById('typeChart').getContext('2d');
+
+fetch('/api/charts/dashboard')
+    .then(r => r.json())
+    .then(d => {
+        document.getElementById('monthlyBadge').textContent =
+            'W tym miesiącu: ' + d.monthly_checkins;
+
+        new Chart(ctx1, {
+            type: 'line',
+            data: {
+                labels: d.daily_labels,
+                datasets: [{
+                    label: 'Wejścia',
+                    data: d.daily_data,
+                    borderColor: '#00d4ff',
+                    backgroundColor: 'rgba(0, 212, 255, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    pointBackgroundColor: '#00d4ff',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointRadius: 5,
+                    borderWidth: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1 },
+                        grid: { color: 'rgba(255,255,255,0.05)' }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+
+        if (d.pie_labels.length) {
+            new Chart(ctx2, {
+                type: 'doughnut',
+                data: {
+                    labels: d.pie_labels,
+                    datasets: [{
+                        data: d.pie_data,
+                        backgroundColor: [
+                            '#00d4ff', '#00ff88', '#ff6b35',
+                            '#fd79a8', '#fdcb6e', '#a29bfe'
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { padding: 8, boxWidth: 12, font: { size: 11 } }
+                        }
+                    },
+                    cutout: '65%'
+                }
+            });
+        }
+    });
+</script>
 {% endblock %}

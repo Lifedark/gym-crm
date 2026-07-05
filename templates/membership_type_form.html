@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 {% block title %}{{ 'Edytuj' if mt else 'Dodaj' }} karnet - {{ app_name }}{% endblock %}
 {% block content %}
-<div class="row justify-content-center">
+<div class="row justify-content-center animate-in">
     <div class="col-md-6">
         <div class="card shadow-sm">
             <div class="card-header">
                 <h5 class="mb-0">
-                    <i class="bi bi-{{ 'pencil' if mt else 'plus-circle' }}"></i>
+                    <i class="bi bi-{{ 'pencil-fill' if mt else 'plus-circle-fill' }}"></i>
                     {{ 'Edytuj' if mt else 'Dodaj' }} karnet
                 </h5>
             </div>

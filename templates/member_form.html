@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 {% block title %}{{ 'Edytuj' if member else 'Dodaj' }} klienta - {{ app_name }}{% endblock %}
 {% block content %}
-<div class="row justify-content-center">
+<div class="row justify-content-center animate-in">
     <div class="col-md-8">
         <div class="card shadow-sm">
             <div class="card-header">
                 <h5 class="mb-0">
-                    <i class="bi bi-{{ 'pencil' if member else 'person-plus' }}"></i>
+                    <i class="bi bi-{{ 'pencil-fill' if member else 'person-plus-fill' }}"></i>
                     {{ 'Edytuj' if member else 'Dodaj' }} klienta
                 </h5>
             </div>

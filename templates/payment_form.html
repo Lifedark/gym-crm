@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Dodaj płatność - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="row justify-content-center animate-in">
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-plus-circle"></i> Dodaj płatność</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label class="form-label">Klient</label>
+                        <select name="member_id" class="form-select" required>
+                            <option value="">-- Wybierz klienta --</option>
+                            {% for m in members %}
+                            <option value="{{ m._id }}">{{ m.name }} ({{ m.phone or 'brak tel.' }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Kwota (zł)</label>
+                        <input type="number" name="amount" class="form-control" step="0.01" min="0.01" required placeholder="np. 120.00">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Metoda płatności</label>
+                        <select name="method" class="form-select">
+                            <option value="cash">Gotówka</option>
+                            <option value="card">Karta</option>
+                            <option value="transfer">Przelew</option>
+                            <option value="other">Inne</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notatki (opcjonalnie)</label>
+                        <textarea name="notes" class="form-control" rows="2" placeholder="Np. za karnet miesięczny..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="bi bi-check-lg"></i> Zapisz płatność
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
