@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pl" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel klienta - {{ app_name }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <canvas id="particle-canvas"></canvas>
+
+    <div class="position-fixed top-0 start-0 p-3 z-3">
+        <a href="/login" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-person-badge"></i> Panel pracownika
+        </a>
+    </div>
+
+    <div class="min-vh-100 d-flex align-items-center justify-content-center px-3">
+        <div class="card" style="max-width: 420px; width: 100%; animation: fadeInScale 0.6s ease;">
+            <div class="card-body text-center p-5">
+                <div class="mb-4" style="font-size: 3.5rem; animation: float 3s ease-in-out infinite;">
+                    <i class="bi bi-dumbbell" style="background: var(--gradient1); -webkit-background-clip: text; -webkit-text-fill-color: transparent;"></i>
+                </div>
+                <h3 class="fw-bold mb-1 glow-text">{{ app_name }}</h3>
+                <p class="text-muted mb-4" style="color: var(--text3) !important;">Panel klienta</p>
+
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }} py-2 mb-3" style="font-size: 0.85rem;">{{ message }}</div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <form method="POST">
+                    <div class="mb-4">
+                        <label class="form-label text-start d-block">Twój email</label>
+                        <div class="input-group input-group-lg">
+                            <span class="input-group-text"><i class="bi bi-envelope-fill"></i></span>
+                            <input type="email" name="email" class="form-control" required
+                                   placeholder="jan@example.com" autofocus>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-lg w-100 glow-button">
+                        <i class="bi bi-send-fill"></i> Wyślij kod weryfikacyjny
+                    </button>
+                </form>
+
+                <p class="mt-4" style="color: var(--text3); font-size: 0.8rem;">
+                    <i class="bi bi-shield-lock-fill"></i> Na Twój email wyślemy 6-cyfrowy kod
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    (function() {
+        const canvas = document.getElementById('particle-canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        const particles = Array.from({length: 60}, () => ({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            vx: (Math.random() - 0.5) * 0.3,
+            vy: (Math.random() - 0.5) * 0.3,
+            r: Math.random() * 2 + 0.5
+        }));
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => {
+                p.x += p.vx; p.y += p.vy;
+                if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+                if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(0,240,255,0.3)';
+                ctx.fill();
+            });
+            particles.forEach((a, i) => {
+                particles.slice(i + 1).forEach(b => {
+                    const dx = a.x - b.x, dy = a.y - b.y, d = Math.sqrt(dx*dx + dy*dy);
+                    if (d < 150) {
+                        ctx.beginPath();
+                        ctx.moveTo(a.x, a.y);
+                        ctx.lineTo(b.x, b.y);
+                        ctx.strokeStyle = `rgba(0,240,255,${0.1 * (1 - d/150)})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.stroke();
+                    }
+                });
+            });
+            requestAnimationFrame(draw);
+        }
+        draw();
+        window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; });
+    })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Kup karnet - {{ app_name }}{% endblock %}
+{% block content %}
+<style>
+    body { background: var(--bg); }
+    .navbar { display: none; }
+    .container-fluid { max-width: 900px; margin: 0 auto; }
+</style>
+
+<div class="text-center py-4 animate-in">
+    <div style="font-size: 3rem; animation: float 3s ease-in-out infinite;">
+        <i class="bi bi-dumbbell" style="background: var(--gradient1); -webkit-background-clip: text; -webkit-text-fill-color: transparent;"></i>
+    </div>
+    <h2 class="fw-bold glow-text">Wybierz swój karnet</h2>
+    <p class="text-muted" style="color: var(--text3) !important;">Kup online i otrzymaj kod QR na email</p>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="alert alert-{{ category }} animate-in">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+<div class="row g-3 justify-content-center">
+    {% for t in types %}
+    <div class="col-md-4 animate-in" style="animation-delay: {{ loop.index0 * 0.15 }}s">
+        <div class="card buy-card h-100 text-center p-3" data-id="{{ t._id }}">
+            <div class="card-body d-flex flex-column justify-content-between">
+                <div>
+                    <div style="font-size: 2.5rem; margin-bottom: 10px;">
+                        {% if t.type == 'period' %}
+                            <i class="bi bi-calendar-check" style="color: var(--accent1);"></i>
+                        {% else %}
+                            <i class="bi bi-123" style="color: var(--accent3);"></i>
+                        {% endif %}
+                    </div>
+                    <h4 class="fw-bold">{{ t.name }}</h4>
+                    <div class="price">{{ t.price|currency }}</div>
+                    <p class="text-muted mt-2 mb-0" style="color: var(--text3) !important; font-size: 0.85rem;">
+                        {% if t.type == 'period' %}
+                            Ważny {{ t.duration_days }} dni
+                        {% else %}
+                            {{ t.entries_count }} wejść
+                        {% endif %}
+                    </p>
+                    {% if t.description %}
+                    <p class="text-muted mt-1" style="font-size: 0.8rem; color: var(--text3) !important;">
+                        {{ t.description }}
+                    </p>
+                    {% endif %}
+                </div>
+                <button class="btn btn-primary btn-lg mt-3 buy-btn glow-button"
+                        onclick="buy('{{ t._id }}')">
+                    <i class="bi bi-cart-fill"></i> Kup
+                </button>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12 text-center py-5">
+        <i class="bi bi-tag" style="font-size: 3rem; color: var(--text3);"></i>
+        <p class="text-muted mt-2">Brak dostępnych karnetów</p>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="text-center mt-4 animate-in">
+    <a href="{{ url_for('client_dashboard') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Powrót
+    </a>
+</div>
+
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+function buy(typeId) {
+    const btn = event.target.closest('button');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Przekierowanie...';
+
+    fetch('/client/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'type_id=' + typeId
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.url) {
+            window.location.href = data.url;
+        } else {
+            alert('Błąd: ' + (data.error || 'Nieznany błąd'));
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-cart-fill"></i> Kup';
+        }
+    })
+    .catch(err => {
+        alert('Błąd połączenia: ' + err);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-cart-fill"></i> Kup';
+    });
+}
+</script>
+{% endblock %}

@@ -8,3 +8,5 @@ python-dotenv>=1.0
 python-barcode>=0.15
 wtforms>=3.1
 gunicorn>=22.0
+stripe>=7.0
+sendgrid>=6.0

@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Panel klienta - {{ app_name }}{% endblock %}
+{% block content %}
+<style>
+    body { background: var(--bg); }
+    .navbar { display: none; }
+    .container-fluid { max-width: 800px; margin: 0 auto; }
+</style>
+
+<div class="text-center py-4 animate-in">
+    <div style="font-size: 3rem; animation: float 3s ease-in-out infinite;">
+        <i class="bi bi-dumbbell" style="background: var(--gradient1); -webkit-background-clip: text; -webkit-text-fill-color: transparent;"></i>
+    </div>
+    <h2 class="fw-bold glow-text">{{ app_name }}</h2>
+    <p class="text-muted mb-0" style="color: var(--text3) !important;">Witaj w panelu klienta</p>
+</div>
+
+{% if member %}
+<div class="card mb-4 animate-in animate-delay-1">
+    <div class="card-body text-center">
+        <div class="qr-display mb-3">
+            <img src="data:image/png;base64,{{ generate_qr_base64(member.qr_code) }}" alt="QR" style="width: 180px;">
+        </div>
+        <h4 class="fw-bold">{{ member.name }}</h4>
+        <p class="mb-1"><code>{{ member.qr_code }}</code></p>
+        {% set st = member_status(member) %}
+        <span class="badge fs-6 bg-{{ 'success' if st == 'active' else 'danger' }}">
+            {{ 'Aktywny' if st == 'active' else 'Nieaktywny' }}
+        </span>
+        <p class="mt-3 mb-0 text-muted" style="font-size: 0.85rem;">
+            Pokaż ten kod przy wejściu na siłownię
+        </p>
+    </div>
+</div>
+{% else %}
+<div class="card mb-4 animate-in animate-delay-1">
+    <div class="card-body text-center py-4">
+        <i class="bi bi-person-plus" style="font-size: 3rem; color: var(--text3);"></i>
+        <h5 class="mt-2">Nie masz jeszcze karnetu?</h5>
+        <p class="text-muted mb-3" style="color: var(--text3) !important;">Kup karnet online i otrzymaj kod QR na email</p>
+        <a href="{{ url_for('client_buy') }}" class="btn btn-primary btn-lg glow-button">
+            <i class="bi bi-cart-fill"></i> Kup karnet
+        </a>
+    </div>
+</div>
+{% endif %}
+
+<div class="card mb-4 animate-in animate-delay-2">
+    <div class="card-header"><i class="bi bi-clock-history"></i> Moje zakupy</div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead><tr><th>Karnet</th><th>Kwota</th><th>Data</th></tr></thead>
+            <tbody>
+                {% for p in purchases %}
+                <tr>
+                    <td>{{ p.type_name }}</td>
+                    <td><strong style="color: var(--accent4);">{{ p.amount|currency }}</strong></td>
+                    <td>{{ p.created_at|datetimefmt }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="3" class="text-center text-muted py-4">Brak zakupów</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="d-flex gap-2 justify-content-center animate-in animate-delay-3">
+    {% if not member %}
+    <a href="{{ url_for('client_buy') }}" class="btn btn-primary btn-lg glow-button">
+        <i class="bi bi-cart-fill"></i> Kup karnet
+    </a>
+    {% endif %}
+    <a href="{{ url_for('client_buy') }}" class="btn btn-outline-secondary btn-lg">
+        <i class="bi bi-plus-circle"></i> Dokup karnet
+    </a>
+    <a href="{{ url_for('client_logout') }}" class="btn btn-outline-secondary btn-lg">
+        <i class="bi bi-box-arrow-right"></i> Wyloguj
+    </a>
+</div>
+{% endblock %}
