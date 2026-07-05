@@ -413,10 +413,16 @@ code {
 .qr-display {
     display: inline-block;
     padding: 20px;
-    background: #fff;
+    background: var(--bg);
     border-radius: var(--radius-lg);
     box-shadow: 0 0 40px rgba(168,85,247,0.2);
     animation: float 3s ease-in-out infinite;
+}
+.qr-display img {
+    display: block;
+    background: #fff;
+    padding: 8px;
+    border-radius: 8px;
 }
 .buy-card { cursor: pointer; transition: all 0.4s; border: 2px solid var(--border); }
 .buy-card:hover, .buy-card.selected { border-color: var(--accent); box-shadow: var(--glow), var(--shadow-lg); transform: translateY(-8px); }
