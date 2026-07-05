@@ -1,83 +1,67 @@
 {% extends "base.html" %}
 {% block title %}Płatności - {{ app_name }}{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4 animate-in">
-    <h4 class="fw-bold"><i class="bi bi-cash-coin"></i> Płatności</h4>
-    <div>
-        <span class="badge bg-info fs-6 me-2">Łącznie: {{ total_amount|currency }}</span>
-        <a href="{{ url_for('payment_add') }}" class="btn btn-primary">
-            <i class="bi bi-plus-lg"></i> Dodaj płatność
-        </a>
-    </div>
+<div class="d-flex justify-content-between align-items-center mb-3 animate-in">
+    <h4 class="fw-bold"><i class="bi bi-cash-stack"></i> Płatności</h4>
+    <a href="{{ url_for('export_payments') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-download"></i> CSV
+    </a>
 </div>
 
-<div class="row g-3 mb-4">
+<div class="row g-2 mb-3">
     <div class="col-md-3">
-        <div class="card stat-card stat-info animate-in animate-delay-1">
-            <h6>Wszystkie płatności</h6>
-            <h2>{{ total }}</h2>
-            <i class="bi bi-cash-stack stat-icon"></i>
+        <div class="card text-center p-2 stat-primary">
+            <h6 class="small text-muted mb-0">Gotówka</h6>
+            <h3 class="fw-bold mb-0">{{ cash_total }} PLN</h3>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card stat-card stat-success animate-in animate-delay-2">
-            <h6>Suma wpłat</h6>
-            <h2>{{ total_amount|currency }}</h2>
-            <i class="bi bi-graph-up-arrow stat-icon"></i>
+        <div class="card text-center p-2 stat-success">
+            <h6 class="small text-muted mb-0">Karta</h6>
+            <h3 class="fw-bold mb-0">{{ card_total }} PLN</h3>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center p-2 stat-info">
+            <h6 class="small text-muted mb-0">Stripe</h6>
+            <h3 class="fw-bold mb-0">{{ stripe_total }} PLN</h3>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center p-2" style="background:var(--card2);">
+            <h6 class="small text-muted mb-0">Łącznie</h6>
+            <h3 class="fw-bold mb-0" style="color:var(--accent);">{{ cash_total + card_total + stripe_total }} PLN</h3>
         </div>
     </div>
 </div>
 
-<form method="GET" class="mb-3">
-    <div class="input-group">
-        <input type="text" name="search" class="form-control" placeholder="Szukaj po nazwie klienta..." value="{{ search }}">
-        <button type="submit" class="btn btn-primary"><i class="bi bi-search"></i></button>
-    </div>
-</form>
-
-<div class="card shadow-sm animate-in">
+<div class="card animate-in">
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table table-hover mb-0">
-                <thead>
-                    <tr>
-                        <th>Data</th>
-                        <th>Klient</th>
-                        <th>Kwota</th>
-                        <th>Metoda</th>
-                        <th>Notatki</th>
-                    </tr>
-                </thead>
+                <thead><tr><th>Data</th><th>Klient</th><th>Karnet</th><th>Kwota</th><th>Metoda</th><th>Pracownik</th></tr></thead>
                 <tbody>
                     {% for p in payments %}
                     <tr>
-                        <td>{{ p.date|datetimefmt }}</td>
-                        <td>
-                            <a href="{{ url_for('member_detail', member_id=p.member_id) }}">
-                                {{ p.member_name }}
-                            </a>
-                        </td>
-                        <td><strong class="text-success">{{ p.amount|currency }}</strong></td>
+                        <td>{{ p.created_at|datefmt }}</td>
+                        <td>{{ p.member_name }}</td>
+                        <td>{{ p.type_name }}</td>
+                        <td><strong>{{ p.amount }} PLN</strong></td>
                         <td>
                             {% if p.method == 'cash' %}
-                                <span class="badge bg-success">Gotówka</span>
+                                <span class="badge" style="background:#10b981;">Gotówka</span>
                             {% elif p.method == 'card' %}
-                                <span class="badge bg-info">Karta</span>
-                            {% elif p.method == 'transfer' %}
-                                <span class="badge bg-warning">Przelew</span>
+                                <span class="badge" style="background:#6366f1;">Karta</span>
+                            {% elif p.method == 'stripe' %}
+                                <span class="badge" style="background:var(--accent);">Stripe</span>
                             {% else %}
                                 <span class="badge bg-secondary">{{ p.method }}</span>
                             {% endif %}
                         </td>
-                        <td><small class="text-muted">{{ p.notes or '-' }}</small></td>
+                        <td>{{ p.recorded_by_name or '-' }}</td>
                     </tr>
                     {% else %}
-                    <tr>
-                        <td colspan="5" class="text-center text-muted py-5">
-                            <i class="bi bi-inbox fs-1 d-block mb-2"></i>
-                            Brak płatności
-                        </td>
-                    </tr>
+                    <tr><td colspan="6" class="text-center text-muted py-5">Brak płatności</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -86,20 +70,10 @@
 </div>
 
 {% if total_pages > 1 %}
-<nav class="mt-3">
-    <ul class="pagination justify-content-center">
-        <li class="page-item {{ 'disabled' if page <= 1 }}">
-            <a class="page-link" href="{{ url_for('payments', page=page-1, search=search) }}"><i class="bi bi-chevron-left"></i></a>
-        </li>
-        {% for p in range(1, total_pages + 1) %}
-        <li class="page-item {{ 'active' if p == page }}">
-            <a class="page-link" href="{{ url_for('payments', page=p, search=search) }}">{{ p }}</a>
-        </li>
-        {% endfor %}
-        <li class="page-item {{ 'disabled' if page >= total_pages }}">
-            <a class="page-link" href="{{ url_for('payments', page=page+1, search=search) }}"><i class="bi bi-chevron-right"></i></a>
-        </li>
-    </ul>
-</nav>
+<nav class="mt-3"><ul class="pagination justify-content-center">
+    {% for p in range(1, total_pages + 1) %}
+    <li class="page-item {{ 'active' if p == page }}"><a class="page-link" href="{{ url_for('payments', page=p) }}">{{ p }}</a></li>
+    {% endfor %}
+</ul></nav>
 {% endif %}
 {% endblock %}

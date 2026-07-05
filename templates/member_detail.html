@@ -53,11 +53,11 @@
             <div class="card-header"><i class="bi bi-qr-code"></i> Kod QR klienta</div>
             <div class="card-body text-center">
                 <div class="qr-display">
-                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={{ member.qr_code }}" alt="QR" style="border-radius:12px;">
+                    <img src="data:image/png;base64,{{ qr_b64 }}" alt="QR" style="border-radius:12px;">
                 </div>
                 <p class="mt-2 text-muted small">{{ member.qr_code }}</p>
-                <a href="https://api.qrserver.com/v1/create-qr-code/?size=500x500&data={{ member.qr_code }}"
-                   class="btn btn-sm btn-outline-secondary" download><i class="bi bi-download"></i> Pobierz PNG</a>
+                <a href="data:image/png;base64,{{ qr_b64 }}" download="qr-{{ member.qr_code }}.png"
+                   class="btn btn-sm btn-outline-secondary"><i class="bi bi-download"></i> Pobierz PNG</a>
             </div>
         </div>
     </div>

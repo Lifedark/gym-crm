@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Aktywuj prezent - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="row justify-content-center" style="margin-top:10vh;">
+    <div class="col-md-5">
+        <div class="card shadow-lg" style="border:1px solid var(--border2);">
+            <div class="card-body p-4 text-center">
+                <div class="mb-3">
+                    <i class="bi bi-gift-fill" style="font-size:3.5rem;color:var(--accent);"></i>
+                </div>
+                <h4 class="fw-bold mb-1"><span class="glow-text">Masz karnet podarunkowy!</span></h4>
+                <p class="text-muted mb-1">Kod: <code style="font-size:1.2rem;">{{ gift.code }}</code></p>
+                <p class="text-muted small mb-3">{{ gift.type_name }} - wartość {{ gift.price }} PLN</p>
+
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, msg in messages %}
+                            <div class="alert alert-{{ category }}">{{ msg }}</div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <form method="POST">
+                    <div class="mb-2 text-start">
+                        <label class="form-label">Imię i nazwisko</label>
+                        <input type="text" name="name" class="form-control" required placeholder="Jan Kowalski">
+                    </div>
+                    <div class="mb-3 text-start">
+                        <label class="form-label">Adres email</label>
+                        <input type="email" name="email" class="form-control" required placeholder="jan@example.com">
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100 btn-lg">
+                        <i class="bi bi-check-circle"></i> Aktywuj karnet
+                    </button>
+                </form>
+                <p class="small text-muted mt-2">Na podany email przyjdzie link do ustawienia hasła.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

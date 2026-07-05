@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Mój profil - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="row justify-content-center animate-in" style="margin-top:5vh;">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-person-gear" style="color:var(--accent);"></i> Mój profil</div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label class="form-label">Imię i nazwisko</label>
+                        <input type="text" name="name" class="form-control" value="{{ member.name }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Telefon</label>
+                        <input type="text" name="phone" class="form-control" value="{{ member.phone or '' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" value="{{ member.email }}" disabled>
+                        <small class="text-muted">Email nie może być zmieniony</small>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" name="show_in_ranking" id="showRanking" class="form-check-input"
+                               {{ 'checked' if member.get('show_in_ranking', True) else '' }}>
+                        <label class="form-check-label" for="showRanking">
+                            <i class="bi bi-eye-fill" style="color:var(--accent);"></i> Pokazuj mnie w rankingu aktywności
+                        </label>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100"><i class="bi bi-check-lg"></i> Zapisz</button>
+                    <a href="{{ url_for('client_dashboard') }}" class="btn btn-outline-secondary w-100 mt-2">Powrót</a>
+                </form>
+                <hr>
+                <button class="btn btn-danger w-100" data-bs-toggle="collapse" data-bs-target="#deleteAccountForm">
+                    <i class="bi bi-trash-fill"></i> Usuń konto
+                </button>
+                <div class="collapse mt-2" id="deleteAccountForm">
+                    <form method="POST" action="{{ url_for('client_delete_account') }}">
+                        <p class="small text-danger">Tej operacji nie można cofnąć!</p>
+                        <input type="text" name="confirm" class="form-control" placeholder="Wpisz USUN-KONTO" required>
+                        <button type="submit" class="btn btn-danger w-100 mt-2"><i class="bi bi-trash-fill"></i> Potwierdź usunięcie</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

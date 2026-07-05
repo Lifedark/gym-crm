@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Ranking - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 animate-in">
+    <h4 class="fw-bold"><i class="bi bi-trophy-fill" style="color:#f59e0b;"></i> Ranking aktywności</h4>
+    <span class="badge" style="background:var(--accent);">{{ month_name }}</span>
+</div>
+
+<div class="card animate-in">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead><tr><th>#</th><th>Klient</th><th>Wejścia</th></tr></thead>
+                <tbody>
+                    {% for r in ranking %}
+                    <tr>
+                        <td>
+                            {% if r.rank == 1 %}
+                                <span class="rank-badge rank-1">1</span>
+                            {% elif r.rank == 2 %}
+                                <span class="rank-badge rank-2">2</span>
+                            {% elif r.rank == 3 %}
+                                <span class="rank-badge rank-3">3</span>
+                            {% else %}
+                                <span class="rank-badge rank-default">{{ r.rank }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {{ r.name }}
+                            {% if not r.visible %}
+                                <i class="bi bi-incognito" style="color:var(--text3);font-size:0.7rem;" title="Anonimowy"></i>
+                            {% endif %}
+                        </td>
+                        <td><strong>{{ r.count }}</strong></td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="3" class="text-center text-muted py-5">Brak danych w tym miesiącu</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<p class="small text-muted mt-2">
+    <i class="bi bi-info-circle"></i> Ranking pokazuje najaktywniejszych klientów w bieżącym miesiącu.
+    Klienci mogą ukryć swoją nazwę w ustawieniach profilu.
+</p>
+{% endblock %}

@@ -43,25 +43,63 @@
                         {% if not member %}
                         <div class="col-12">
                             <label class="form-label">Typ karnetu</label>
-                            <div class="d-flex gap-4 mt-1">
+                            <div class="d-flex gap-4 mt-1 flex-wrap">
                                 <div class="form-check">
                                     <input class="form-check-input" type="radio" name="membership_kind" id="kindOnline" value="online" checked
+                                           onchange="togglePayment()"
                                            style="width:20px;height:20px;border-radius:50%;border:2px solid var(--border2);background:var(--card2);cursor:pointer;">
                                     <label class="form-check-label" for="kindOnline" style="cursor:pointer;">
                                         <i class="bi bi-globe" style="color:var(--accent);"></i> Online
-                                        <small class="d-block text-muted" style="font-size:0.75rem;">Klient dostaje maila, ustawia hasło, czeka na akceptację</small>
+                                        <small class="d-block text-muted" style="font-size:0.75rem;">Mail + Stripe + akceptacja</small>
                                     </label>
                                 </div>
                                 <div class="form-check">
                                     <input class="form-check-input" type="radio" name="membership_kind" id="kindPhysical" value="physical"
+                                           onchange="togglePayment()"
                                            style="width:20px;height:20px;border-radius:50%;border:2px solid var(--border2);background:var(--card2);cursor:pointer;">
                                     <label class="form-check-label" for="kindPhysical" style="cursor:pointer;">
                                         <i class="bi bi-person-badge" style="color:var(--accent);"></i> Fizyczny
-                                        <small class="d-block text-muted" style="font-size:0.75rem;">Klient od razu aktywny, bez maila</small>
+                                        <small class="d-block text-muted" style="font-size:0.75rem;">Od razu aktywny, bez maila</small>
                                     </label>
                                 </div>
                             </div>
                         </div>
+                        <div class="col-12" id="paymentMethodGroup">
+                            <label class="form-label">Sposób płatności</label>
+                            <div class="d-flex gap-4 mt-1 flex-wrap">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="payment_method" id="payOnline" value="online" checked
+                                           style="width:20px;height:20px;border-radius:50%;">
+                                    <label class="form-check-label" for="payOnline" style="cursor:pointer;">
+                                        <i class="bi bi-credit-card" style="color:var(--accent);"></i> Online (Stripe)
+                                        <small class="d-block text-muted" style="font-size:0.75rem;">Klient płaci przez link w mailu</small>
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="payment_method" id="payCash" value="cash"
+                                           style="width:20px;height:20px;border-radius:50%;">
+                                    <label class="form-check-label" for="payCash" style="cursor:pointer;">
+                                        <i class="bi bi-cash" style="color:var(--accent);"></i> Gotówka
+                                        <small class="d-block text-muted" style="font-size:0.75rem;">Zapłacono na recepcji</small>
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="payment_method" id="payCard" value="card"
+                                           style="width:20px;height:20px;border-radius:50%;">
+                                    <label class="form-check-label" for="payCard" style="cursor:pointer;">
+                                        <i class="bi bi-credit-card-2-front" style="color:var(--accent);"></i> Karta
+                                        <small class="d-block text-muted" style="font-size:0.75rem;">Zapłacono kartą na recepcji</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <script>
+                        function togglePayment() {
+                            const kindOnline = document.getElementById('kindOnline').checked;
+                            document.getElementById('paymentMethodGroup').style.display = kindOnline ? 'block' : 'none';
+                        }
+                        togglePayment();
+                        </script>
                     {% endif %}
                     {% if member %}
                         <div class="col-md-6">

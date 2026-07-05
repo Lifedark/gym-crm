@@ -1,138 +1,138 @@
 {% extends "base.html" %}
 {% block title %}Panel - {{ app_name }}{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4 animate-in">
+<div class="d-flex justify-content-between align-items-center mb-3 animate-in">
     <h4 class="fw-bold"><i class="bi bi-grid-1x2-fill"></i> Panel główny</h4>
-    <small class="text-muted">{{ now().strftime('%d.%m.%Y %H:%M') }}</small>
+    <div class="d-flex align-items-center gap-2">
+        <span class="badge" id="liveBadge" style="background:var(--accent);font-size:0.7rem;">
+            <i class="bi bi-circle-fill live-dot" style="color:#10b981;"></i> LIVE
+        </span>
+        <small class="text-muted" id="clockDisplay">{{ now().strftime('%H:%M:%S') }}</small>
+    </div>
 </div>
 
-<div class="row g-3 mb-4" id="statsRow">
+<div class="row g-2 mb-3" id="statsRow">
     <div class="col-md-3 animate-in animate-delay-1">
-        <div class="card stat-card stat-primary">
-            <h6>Wszyscy klienci</h6>
-            <h2 id="statTotal">{{ total_members }}</h2>
-            <i class="bi bi-people-fill stat-icon"></i>
+        <div class="card stat-card stat-primary text-center p-3">
+            <h6 class="text-muted small">Wszyscy klienci</h6>
+            <h2 class="fw-bold mb-0" id="statTotal">{{ total_members }}</h2>
         </div>
     </div>
     <div class="col-md-3 animate-in animate-delay-2">
-        <div class="card stat-card stat-success">
-            <h6>Aktywni</h6>
-            <h2 id="statActive">{{ active_members }}</h2>
-            <i class="bi bi-check-circle-fill stat-icon"></i>
+        <div class="card stat-card stat-success text-center p-3">
+            <h6 class="text-muted small">Aktywni</h6>
+            <h2 class="fw-bold mb-0" id="statActive">{{ active_members }}</h2>
         </div>
     </div>
     <div class="col-md-3 animate-in animate-delay-3">
-        <div class="card stat-card stat-warning">
-            <h6>Dzisiejsze wejścia</h6>
-            <h2>{{ today_checkins }}</h2>
-            <i class="bi bi-door-open-fill stat-icon"></i>
+        <div class="card stat-card text-center p-3" style="background:linear-gradient(135deg,#001005,#002010);">
+            <h6 class="text-muted small">Wejścia dzisiaj</h6>
+            <h2 class="fw-bold mb-0" id="statTodayCheckins">{{ today_checkins }}</h2>
         </div>
     </div>
     <div class="col-md-3 animate-in animate-delay-4">
-        <div class="card stat-card stat-danger">
-            <h6>Wygasłe</h6>
-            <h2>{{ expired_members }}</h2>
-            <i class="bi bi-exclamation-triangle-fill stat-icon"></i>
+        <div class="card stat-card text-center p-3" style="background:linear-gradient(135deg,#001005,#002010);">
+            <h6 class="text-muted small">Przychód (m-c)</h6>
+            <h2 class="fw-bold mb-0" id="statRevenue">{{ monthly_revenue }} PLN</h2>
         </div>
     </div>
 </div>
 
-<div class="row g-3 mb-4">
-    <div class="col-md-8 animate-in animate-delay-1">
-        <div class="card shadow-sm">
+<div class="row g-2 mb-3">
+    <div class="col-3">
+        <div class="card text-center p-2 animate-in animate-delay-1">
+            <h6 class="text-muted small text-uppercase fw-bold">Średnia/dzień</h6>
+            <h4 class="fw-bold mb-0" id="statAvg">-</h4>
+        </div>
+    </div>
+    <div class="col-3">
+        <div class="card text-center p-2 animate-in animate-delay-2">
+            <h6 class="text-muted small text-uppercase fw-bold">Najdzień</h6>
+            <h4 class="fw-bold mb-0" id="statBusiest">-</h4>
+        </div>
+    </div>
+    <div class="col-3">
+        <div class="card text-center p-2 animate-in animate-delay-3">
+            <h6 class="text-muted small text-uppercase fw-bold">Odnowienia</h6>
+            <h4 class="fw-bold mb-0" id="statRenewals">-</h4>
+        </div>
+    </div>
+    <div class="col-3">
+        <div class="card text-center p-2 animate-in animate-delay-4">
+            <h6 class="text-muted small text-uppercase fw-bold">Szczyt</h6>
+            <h4 class="fw-bold mb-0" id="statPeak">-</h4>
+        </div>
+    </div>
+</div>
+
+<div class="row g-2 mb-3">
+    <div class="col-md-8 animate-in">
+        <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-bar-chart-fill"></i> Wejścia w tym tygodniu</span>
-                <span class="badge bg-info" id="monthlyBadge">W tym miesiącu: {{ today_checkins }}</span>
+                <span><i class="bi bi-bar-chart-fill" style="color:var(--accent);"></i> Wejścia (30 dni)</span>
+                <span class="badge" id="monthlyBadge" style="background:var(--muted);">Miesiąc: {{ monthly_checkins }}</span>
             </div>
             <div class="card-body">
-                <div class="chart-container">
-                    <canvas id="weeklyChart"></canvas>
-                </div>
+                <canvas id="chart30d" style="height:220px;"></canvas>
             </div>
         </div>
     </div>
-    <div class="col-md-4 animate-in animate-delay-2">
-        <div class="card shadow-sm">
-            <div class="card-header"><i class="bi bi-pie-chart-fill"></i> Klienci według karnetu</div>
+    <div class="col-md-4 animate-in">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-pie-chart-fill" style="color:var(--accent);"></i> Karnety</div>
             <div class="card-body">
-                <div class="chart-container" style="height: 230px;">
-                    <canvas id="typeChart"></canvas>
-                </div>
+                <canvas id="pieChart" style="height:200px;"></canvas>
             </div>
         </div>
     </div>
 </div>
 
-<div class="row g-3">
-    <div class="col-md-6 animate-in animate-delay-1">
-        <div class="card shadow-sm">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-alarm"></i> Kończące się karnety (7 dni)</span>
+<div class="row g-2 mb-3">
+    <div class="col-md-4 animate-in">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-cash-stack" style="color:var(--accent);"></i> Przychód (30 dni)</div>
+            <div class="card-body">
+                <canvas id="revenueChart" style="height:180px;"></canvas>
             </div>
+        </div>
+    </div>
+    <div class="col-md-4 animate-in">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-alarm" style="color:var(--accent);"></i> Kończące się</div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th>Klient</th>
-                                <th>Zostało</th>
-                                <th>Akcja</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for item in expiring_soon %}
-                            <tr>
-                                <td><a href="{{ url_for('member_detail', member_id=item.member._id) }}">{{ item.member.name }}</a></td>
-                                <td>
-                                    {% if item.remaining == 0 %}
-                                        <span class="badge bg-danger">Dziś!</span>
-                                    {% else %}
-                                        <span class="badge bg-warning">{{ item.remaining }} dni</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    <a href="{{ url_for('member_detail', member_id=item.member._id) }}" class="btn btn-sm btn-primary">
-                                        <i class="bi bi-arrow-clockwise"></i> Odnów
-                                    </a>
-                                </td>
-                            </tr>
-                            {% else %}
-                            <tr><td colspan="3" class="text-center text-muted py-4">Brak kończących się karnetów</td></tr>
-                            {% endfor %}
-                        </tbody>
+                    <table class="table table-sm mb-0">
+                        {% for item in expiring_soon[:5] %}
+                        <tr>
+                            <td><a href="{{ url_for('member_detail', member_id=item.member._id) }}" style="color:var(--accent);">{{ item.member.name }}</a></td>
+                            <td><span class="badge bg-warning">{{ item.remaining }}d</span></td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="2" class="text-center text-muted py-3">Brak</td></tr>
+                        {% endfor %}
                     </table>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-md-6 animate-in animate-delay-2">
-        <div class="card shadow-sm">
-            <div class="card-header"><i class="bi bi-clock-history"></i> Ostatnie wejścia</div>
+    <div class="col-md-4 animate-in">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-clock-history" style="color:var(--accent);"></i> Ostatnie wejścia</div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th>Klient</th>
-                                <th>Czas</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for c in recent_checkins %}
-                            <tr>
-                                <td>
-                                    {% if c.member %}
-                                    <a href="{{ url_for('member_detail', member_id=c.member._id) }}">{{ c.member.name }}</a>
-                                    {% else %}
-                                    <span class="text-muted">Usunięty</span>
-                                    {% endif %}
-                                </td>
-                                <td><small>{{ c.timestamp|datetimefmt }}</small></td>
-                            </tr>
-                            {% else %}
-                            <tr><td colspan="2" class="text-center text-muted py-4">Brak wejść</td></tr>
-                            {% endfor %}
-                        </tbody>
+                    <table class="table table-sm mb-0">
+                        {% for c in recent_checkins[:5] %}
+                        <tr>
+                            <td>
+                                {% if c.member %}
+                                <a href="{{ url_for('member_detail', member_id=c.member._id) }}" style="color:var(--accent);">{{ c.member.name }}</a>
+                                {% else %}<span class="text-muted">Usunięty</span>{% endif %}
+                            </td>
+                            <td><small class="text-muted">{{ c.timestamp|datetimefmt }}</small></td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="2" class="text-center text-muted py-3">Brak</td></tr>
+                        {% endfor %}
                     </table>
                 </div>
             </div>
@@ -141,26 +141,19 @@
 </div>
 
 {% if current_user.is_admin() %}
-<div class="row mt-4">
-    <div class="col-12">
-        <div class="card border-danger animate-in">
-            <div class="card-header text-danger"><i class="bi bi-shield-exclamation"></i> Panel administratora</div>
-            <div class="card-body">
-                <div class="row g-3 align-items-center">
-                    <div class="col-md-auto">
-                        <a href="/client" target="_blank" class="btn btn-primary">
-                            <i class="bi bi-globe"></i> Portal klienta
-                        </a>
-                    </div>
-                    <div class="col-md">
-                        <form method="POST" action="{{ url_for('bulk_delete') }}" onsubmit="return confirm('USUNĄĆ WSZYSTKIE DANE? Tej operacji nie można cofnąć!')" class="d-flex gap-2 align-items-center">
-                            <input type="text" name="confirm" class="form-control" placeholder="Wpisz USUN-WSZYSTKO" style="max-width: 200px;" required>
-                            <button type="submit" class="btn btn-danger">
-                                <i class="bi bi-trash-fill"></i> Usuń wszystkie dane
-                            </button>
-                        </form>
-                    </div>
-                </div>
+<div class="card border-danger animate-in mt-2">
+    <div class="card-header text-danger"><i class="bi bi-shield-exclamation"></i> Admin</div>
+    <div class="card-body">
+        <div class="row g-2 align-items-center">
+            <div class="col-auto">
+                <a href="/client" target="_blank" class="btn btn-primary btn-sm"><i class="bi bi-globe"></i> Portal klienta</a>
+                <a href="{{ url_for('payments') }}" class="btn btn-info btn-sm"><i class="bi bi-cash-stack"></i> Płatności</a>
+            </div>
+            <div class="col">
+                <form method="POST" action="{{ url_for('bulk_delete') }}" class="d-flex gap-2" onsubmit="return confirm('USUNĄĆ WSZYSTKIE DANE?')">
+                    <input type="text" name="confirm" class="form-control form-control-sm" placeholder="USUN-WSZYSTKO" style="max-width:180px;" required>
+                    <button type="submit" class="btn btn-danger btn-sm"><i class="bi bi-trash-fill"></i> Usuń wszystko</button>
+                </form>
             </div>
         </div>
     </div>
@@ -170,79 +163,115 @@
 
 {% block extra_scripts %}
 <script>
-const ctx1 = document.getElementById('weeklyChart').getContext('2d');
-const ctx2 = document.getElementById('typeChart').getContext('2d');
+let chart30d, pieChart, revenueChart;
 
-fetch('/api/charts/dashboard')
-    .then(r => r.json())
-    .then(d => {
-        document.getElementById('monthlyBadge').textContent =
-            'W tym miesiącu: ' + d.monthly_checkins;
+function updateCharts() {
+    fetch('/api/charts/dashboard')
+        .then(r => r.json())
+        .then(d => {
+            document.getElementById('statTotal').textContent = d.total_members;
+            document.getElementById('statActive').textContent = d.active_members;
+            document.getElementById('statTodayCheckins').textContent = d.today_checkins;
+            document.getElementById('monthlyBadge').textContent = 'Miesiąc: ' + d.monthly_checkins;
+            document.getElementById('statRevenue').textContent = d.monthly_revenue + ' PLN';
 
-        new Chart(ctx1, {
-            type: 'line',
-            data: {
-                labels: d.daily_labels,
-                datasets: [{
-                    label: 'Wejścia',
-                    data: d.daily_data,
-                    borderColor: '#00d4ff',
-                    backgroundColor: 'rgba(0, 212, 255, 0.1)',
-                    fill: true,
-                    tension: 0.4,
-                    pointBackgroundColor: '#00d4ff',
-                    pointBorderColor: '#fff',
-                    pointBorderWidth: 2,
-                    pointRadius: 5,
-                    borderWidth: 3
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: { stepSize: 1 },
-                        grid: { color: 'rgba(255,255,255,0.05)' }
+            if (!chart30d) {
+                chart30d = new Chart(document.getElementById('chart30d'), {
+                    type: 'line',
+                    data: {
+                        labels: d.daily_labels,
+                        datasets: [{
+                            label: 'Wejścia',
+                            data: d.daily_data,
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16,185,129,0.1)',
+                            fill: true,
+                            tension: 0.4,
+                            pointBackgroundColor: '#10b981',
+                            pointBorderColor: '#10b981',
+                            pointRadius: 4,
+                            borderWidth: 2
+                        }]
                     },
-                    x: {
-                        grid: { display: false }
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                            x: { grid: { display: false } }
+                        }
                     }
-                }
+                });
+            } else {
+                chart30d.data.labels = d.daily_labels;
+                chart30d.data.datasets[0].data = d.daily_data;
+                chart30d.update();
+            }
+
+            if (!pieChart && d.pie_labels.length) {
+                pieChart = new Chart(document.getElementById('pieChart'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: d.pie_labels,
+                        datasets: [{ data: d.pie_data,                         backgroundColor: ['#10b981','#059669','#34d399','#6ee7b7','#047857'], borderWidth: 0 }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } },
+                        cutout: '65%'
+                    }
+                });
+            }
+
+            if (!revenueChart) {
+                revenueChart = new Chart(document.getElementById('revenueChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: d.revenue_labels,
+                        datasets: [{
+                            label: 'Przychód',
+                            data: d.revenue_data,
+                            backgroundColor: 'rgba(16,185,129,0.6)',
+                            borderColor: '#10b981',
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } },
+                            x: { grid: { display: false } }
+                        }
+                    }
+                });
+            } else {
+                revenueChart.data.labels = d.revenue_labels;
+                revenueChart.data.datasets[0].data = d.revenue_data;
+                revenueChart.update();
             }
         });
+}
 
-        if (d.pie_labels.length) {
-            new Chart(ctx2, {
-                type: 'doughnut',
-                data: {
-                    labels: d.pie_labels,
-                    datasets: [{
-                        data: d.pie_data,
-                        backgroundColor: [
-                            '#00d4ff', '#00ff88', '#ff6b35',
-                            '#fd79a8', '#fdcb6e', '#a29bfe'
-                        ],
-                        borderWidth: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: { padding: 8, boxWidth: 12, font: { size: 11 } }
-                        }
-                    },
-                    cutout: '65%'
-                }
-            });
-        }
-    });
+function updateStats() {
+    fetch('/api/dashboard/stats')
+        .then(r => r.json())
+        .then(d => {
+            document.getElementById('statAvg').textContent = d.avg_daily;
+            document.getElementById('statBusiest').textContent = d.busiest_day;
+            document.getElementById('statRenewals').textContent = d.renewals;
+            document.getElementById('statPeak').textContent = d.peak_hour;
+        });
+}
+
+setInterval(updateCharts, 5000);
+setInterval(updateStats, 10000);
+setInterval(() => {
+    document.getElementById('clockDisplay').textContent = new Date().toLocaleTimeString('pl-PL');
+}, 1000);
+updateCharts();
+updateStats();
 </script>
 {% endblock %}

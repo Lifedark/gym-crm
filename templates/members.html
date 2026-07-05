@@ -109,6 +109,11 @@
                             <a href="{{ url_for('member_edit', member_id=item.member._id) }}" class="btn btn-sm btn-warning" title="Edytuj">
                                 <i class="bi bi-pencil-fill"></i>
                             </a>
+                            {% if current_user.is_admin() %}
+                            <a href="{{ url_for('member_delete', member_id=item.member._id) }}" class="btn btn-sm btn-danger" title="Usuń" onclick="return confirm('Usunąć {{ item.member.name }}?')">
+                                <i class="bi bi-trash-fill"></i>
+                            </a>
+                            {% endif %}
                         </td>
                     </tr>
                     {% else %}

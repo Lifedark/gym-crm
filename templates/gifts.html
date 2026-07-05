@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Karnety podarunkowe - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 animate-in">
+    <h4 class="fw-bold"><i class="bi bi-gift-fill" style="color:var(--accent);"></i> Karnety podarunkowe</h4>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#giftModal">
+        <i class="bi bi-plus-lg"></i> Nowy prezent
+    </button>
+</div>
+
+<div class="card animate-in">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead><tr><th>Kod</th><th>Karnet</th><th>Wartość</th><th>Notatka</th><th>Utworzono</th><th>Status</th><th>Akcje</th></tr></thead>
+                <tbody>
+                    {% for g in gifts %}
+                    <tr>
+                        <td><code style="font-size:1rem;">{{ g.code }}</code></td>
+                        <td>{{ g.type_name }}</td>
+                        <td>{{ g.price }} PLN</td>
+                        <td>{{ g.note or '-' }}</td>
+                        <td>{{ g.created_at|datefmt }}</td>
+                        <td>
+                            {% if g.redeemed %}
+                                <span class="badge bg-success">Wykorzystany</span>
+                                <small class="d-block text-muted">{{ g.redeemed_by }}</small>
+                            {% else %}
+                                <span class="badge bg-warning">Aktywny</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if not g.redeemed %}
+                            <a href="{{ url_for('gift_delete', gift_id=g._id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Usunąć?')">
+                                <i class="bi bi-trash-fill"></i>
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="7" class="text-center text-muted py-5">Brak karnetów podarunkowych</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="giftModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title"><i class="bi bi-gift-fill" style="color:var(--accent);"></i> Nowy karnet podarunkowy</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <form method="POST" action="{{ url_for('gift_create') }}">
+                <div class="modal-body">
+                    <label class="form-label">Karnet</label>
+                    <select name="membership_type_id" class="form-select mb-3" required>
+                        <option value="">-- Wybierz --</option>
+                        {% for t in types %}
+                        <option value="{{ t._id }}">{{ t.name }} - {{ t.price }} PLN</option>
+                        {% endfor %}
+                    </select>
+                    <label class="form-label">Notatka (opcjonalnie)</label>
+                    <input type="text" name="note" class="form-control" placeholder="Dla kogo?">
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary w-100"><i class="bi bi-gift-fill"></i> Utwórz kod podarunkowy</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

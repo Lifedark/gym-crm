@@ -3,9 +3,12 @@
 {% block content %}
 <div class="row mb-3 animate-in">
     <div class="col-md-8">
-        <h4 class="fw-bold"><i class="bi bi-person-circle"></i> Witaj, {{ member.name }}</h4>
+        <h4 class="fw-bold"><i class="bi bi-person-circle" style="color:var(--accent);"></i> Witaj, {{ member.name }}</h4>
     </div>
     <div class="col-md-4 text-end">
+        <a href="{{ url_for('client_profile') }}" class="btn btn-outline-secondary btn-sm me-1">
+            <i class="bi bi-gear"></i> Profil
+        </a>
         <a href="{{ url_for('client_logout') }}" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-box-arrow-right"></i> Wyloguj
         </a>
@@ -20,29 +23,23 @@
     {% endif %}
 {% endwith %}
 
-<div class="row g-3 mb-3">
+<div class="row g-2 mb-3">
     {% if member_status == 'pending' %}
     <div class="col-12">
-        <div class="alert alert-warning">
-            <i class="bi bi-hourglass-split"></i> Twoje konto oczekuje na zatwierdzenie przez personel. Gdy tylko zostanie zatwierdzone, otrzymasz powiadomienie.
-        </div>
+        <div class="alert alert-warning"><i class="bi bi-hourglass-split"></i> Konto oczekuje na zatwierdzenie przez personel.</div>
     </div>
     {% elif member_status == 'expired' %}
     <div class="col-12">
-        <div class="alert alert-danger">
-            <i class="bi bi-exclamation-triangle"></i> Twój karnet wygasł. <a href="{{ url_for('client_buy') }}" style="color:var(--accent);font-weight:700;">Kup nowy karnet</a>
-        </div>
+        <div class="alert alert-danger"><i class="bi bi-exclamation-triangle"></i> Karnet wygasł. <a href="{{ url_for('client_buy') }}" style="color:var(--accent);font-weight:700;">Kup nowy</a></div>
     </div>
     {% elif member_status == 'frozen' %}
     <div class="col-12">
-        <div class="alert alert-info">
-            <i class="bi bi-snow2"></i> Twój karnet jest zamrożony. Skontaktuj się z personelem, aby go odmrozić.
-        </div>
+        <div class="alert alert-info"><i class="bi bi-snow2"></i> Karnet zamrożony. Skontaktuj się z personelem.</div>
     </div>
     {% endif %}
 
-    <div class="col-md-4">
-        <div class="card text-center p-3">
+    <div class="col-4">
+        <div class="card text-center p-2">
             <h6 class="text-muted small text-uppercase fw-bold">Status</h6>
             {% if member_status == 'active' %}
                 <span class="badge bg-success fs-5 py-2">Aktywny</span>
@@ -55,68 +52,119 @@
             {% endif %}
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card text-center p-3">
+    <div class="col-4">
+        <div class="card text-center p-2">
             <h6 class="text-muted small text-uppercase fw-bold">Karnet</h6>
             <p class="fw-bold mb-0">{{ type_name or 'Brak' }}</p>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card text-center p-3">
-            <h6 class="text-muted small text-uppercase fw-bold">Pozostało wejść</h6>
+    <div class="col-4">
+        <div class="card text-center p-2">
+            <h6 class="text-muted small text-uppercase fw-bold">Wejścia</h6>
             <p class="fw-bold mb-0 fs-4">
                 {% if member.entries_left is not none %}
                     {{ member.entries_left }} / {{ member.total_entries }}
-                {% else %}
-                    <i class="bi bi-infinity"></i>
-                {% endif %}
+                {% else %}<i class="bi bi-infinity"></i>{% endif %}
             </p>
         </div>
     </div>
 </div>
 
-<div class="row g-3 mb-3">
+{% if member.get('goal_target') %}
+<div class="card mb-2">
+    <div class="card-body py-2">
+        <div class="d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-bullseye" style="color:var(--accent);"></i> <strong>Cel: {{ member.goal_target }} wejść</strong></span>
+            <span class="small text-muted">{{ member.goal_progress or 0 }}/{{ member.goal_target }}</span>
+        </div>
+        <div class="progress mt-1" style="height:6px;">
+            {% set pct = (member.goal_progress or 0) / member.goal_target * 100 %}
+            <div class="progress-bar" style="width:{{ pct if pct <= 100 else 100 }}%;"></div>
+        </div>
+        <a href="{{ url_for('client_remove_goal') }}" class="small text-muted">Usuń cel</a>
+    </div>
+</div>
+{% endif %}
+
+<div class="row g-2 mb-3">
     <div class="col-md-6">
-        <div class="card text-center p-4">
-            <h6 class="text-muted small text-uppercase fw-bold">Twój kod QR</h6>
-            <div class="qr-display my-3">
-                <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={{ member.qr_code }}" alt="QR" style="border-radius:12px;">
-                            </div>
-                            <p class="small text-muted">{{ member.qr_code }}</p>
-                            <a href="https://api.qrserver.com/v1/create-qr-code/?size=500x500&data={{ member.qr_code }}"
-               class="btn btn-sm btn-outline-secondary" download><i class="bi bi-download"></i> Pobierz</a>
+        <div class="card text-center p-3">
+            <h6 class="text-muted small text-uppercase fw-bold">QR kod</h6>
+            <div class="qr-display my-2">
+                <img src="data:image/png;base64,{{ qr_b64 }}" alt="QR" style="border-radius:12px;max-width:150px;">
+            </div>
+            <p class="small text-muted">{{ member.qr_code }}</p>
         </div>
     </div>
     <div class="col-md-6">
         {% if member_status == 'active' %}
-        <div class="card p-4 text-center" style="height:100%;display:flex;align-items:center;justify-content:center;">
-            <a href="{{ url_for('client_buy') }}" class="btn btn-primary btn-lg w-100">
-                <i class="bi bi-cart-fill"></i> Kup karnet
-            </a>
-            <p class="small text-muted mt-2 mb-0">Kup nowy karnet lub przedłuż istniejący</p>
+        <div class="card p-3 text-center" style="height:100%;">
+            <a href="{{ url_for('client_buy') }}" class="btn btn-primary w-100 mb-2"><i class="bi bi-cart-fill"></i> Kup karnet</a>
+            <button class="btn btn-outline-secondary w-100 mb-2" data-bs-toggle="collapse" data-bs-target="#goalForm">
+                <i class="bi bi-bullseye"></i> Ustaw cel
+            </button>
+            <button class="btn btn-outline-secondary w-100" data-bs-toggle="collapse" data-bs-target="#commentForm">
+                <i class="bi bi-star"></i> Oceń trening
+            </button>
         </div>
         {% else %}
-        <div class="card p-4 text-center" style="height:100%;display:flex;align-items:center;justify-content:center;">
-            <h6 class="text-muted mb-0">Zakupy karnetów będą dostępne po aktywacji konta.</h6>
+        <div class="card p-3 text-center" style="height:100%;">
+            <h6 class="text-muted mb-0">Zakupy i cele będą dostępne po aktywacji.</h6>
         </div>
         {% endif %}
     </div>
 </div>
 
-<div class="card shadow-sm animate-in">
-    <div class="card-header"><i class="bi bi-clock-history"></i> Historia wejść</div>
+<div class="collapse mb-2" id="goalForm">
+    <div class="card">
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('client_set_goal') }}">
+                <label class="form-label">Cel: ile wejść w tym miesiącu?</label>
+                <div class="input-group">
+                    <input type="number" name="target" class="form-control" min="1" max="365" placeholder="np. 20" required>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Ustaw</button>
+                </div>
+                <div class="form-check mt-2">
+                    <input type="checkbox" name="visible" id="goalVisible" class="form-check-input" checked>
+                    <label class="form-check-label" for="goalVisible">Pokaż cel w rankingu</label>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="collapse mb-2" id="commentForm">
+    <div class="card">
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('client_add_comment') }}">
+                <label class="form-label">Ocena (1-5)</label>
+                <div class="d-flex gap-2 mb-2">
+                    {% for i in range(1,6) %}
+                    <div class="form-check">
+                        <input type="radio" name="rating" value="{{ i }}" id="star{{ i }}" class="form-check-input" {{ 'checked' if i == 5 else '' }}>
+                        <label class="form-check-label" for="star{{ i }}">{{ i }}</label>
+                    </div>
+                    {% endfor %}
+                </div>
+                <label class="form-label">Komentarz (opcjonalnie)</label>
+                <textarea name="comment" class="form-control" rows="2" placeholder="Jak minął trening?"></textarea>
+                <button type="submit" class="btn btn-primary mt-2 w-100"><i class="bi bi-send-fill"></i> Wyślij opinię</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="card animate-in">
+    <div class="card-header"><i class="bi bi-clock-history" style="color:var(--accent);"></i> Historia wejść</div>
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table table-sm mb-0">
                 <thead><tr><th>Data</th><th>Typ</th></tr></thead>
                 <tbody>
                     {% for h in history[:20] %}
-                    <tr>
-                        <td>{{ h.timestamp|datefmt }}</td>
-                        <td>{{ h.checkin_type }}</td>
-                    </tr>
+                    <tr><td>{{ h.timestamp|datefmt }}</td><td>{{ h.method or '?' }}</td></tr>
                     {% else %}
-                    <tr><td colspan="2" class="text-center text-muted py-4">Brak historii wejść</td></tr>
+                    <tr><td colspan="2" class="text-center text-muted py-4">Brak historii</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -124,22 +172,17 @@
     </div>
 </div>
 
-<div class="card shadow-sm mt-3 animate-in">
-    <div class="card-header"><i class="bi bi-cart-check"></i> Historia zakupów</div>
+<div class="card mt-2 animate-in">
+    <div class="card-header"><i class="bi bi-cart-check" style="color:var(--accent);"></i> Zakupy</div>
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table table-sm mb-0">
-                <thead><tr><th>Data</th><th>Karnet</th><th>Kwota</th><th>Status</th></tr></thead>
+                <thead><tr><th>Data</th><th>Karnet</th><th>Kwota</th></tr></thead>
                 <tbody>
                     {% for p in purchases[:20] %}
-                    <tr>
-                        <td>{{ p.timestamp|datefmt }}</td>
-                        <td>{{ p.type_name }}</td>
-                        <td>{{ p.amount }} PLN</td>
-                        <td><span class="badge bg-success">Opłacono</span></td>
-                    </tr>
+                    <tr><td>{{ p.created_at|datefmt }}</td><td>{{ p.type_name }}</td><td>{{ p.amount }} PLN</td></tr>
                     {% else %}
-                    <tr><td colspan="4" class="text-center text-muted py-4">Brak zakupów</td></tr>
+                    <tr><td colspan="3" class="text-center text-muted py-4">Brak zakupów</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
