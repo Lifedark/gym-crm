@@ -830,7 +830,7 @@ def export_history():
 
 @app.route("/client")
 def client_home():
-    return render_template("client_login.html")
+    return redirect(url_for("client_login"))
 
 
 @app.route("/client/login", methods=["GET", "POST"])
