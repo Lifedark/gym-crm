@@ -1,90 +1,149 @@
 {% extends "base.html" %}
 {% block title %}Panel klienta - {{ app_name }}{% endblock %}
 {% block content %}
-<style>
-    body { background: var(--bg); }
-    .navbar { display: none; }
-    .container-fluid { max-width: 800px; margin: 0 auto; }
-</style>
-
-<div class="text-center py-4 animate-in">
-    <div style="font-size: 3rem; animation: float 3s ease-in-out infinite;">
-        <i class="bi bi-dumbbell" style="background: var(--gradient1); -webkit-background-clip: text; -webkit-text-fill-color: transparent;"></i>
+<div class="row mb-3 animate-in">
+    <div class="col-md-8">
+        <h4 class="fw-bold"><i class="bi bi-person-circle"></i> Witaj, {{ member.name }}</h4>
     </div>
-    <h2 class="fw-bold glow-text">{{ app_name }}</h2>
-    <p class="text-muted mb-0" style="color: var(--text3) !important;">Witaj w panelu klienta</p>
-</div>
-
-{% if member %}
-<div class="card mb-4 animate-in animate-delay-1">
-    <div class="card-body text-center">
-        <div class="qr-display mb-3">
-            <img src="data:image/png;base64,{{ generate_qr_base64(member.qr_code) }}" alt="QR" style="width: 180px;">
-        </div>
-        <h4 class="fw-bold">{{ member.name }}</h4>
-        <p class="mb-1"><code>{{ member.qr_code }}</code></p>
-        {% set st = member_status(member) %}
-        <span class="badge fs-6 bg-{{ 'success' if st == 'active' else 'danger' }}">
-            {{ 'Aktywny' if st == 'active' else 'Nieaktywny' }}
-        </span>
-        <p class="mt-3 mb-0 text-muted" style="font-size: 0.85rem;">
-            Pokaż ten kod przy wejściu na siłownię
-        </p>
-    </div>
-</div>
-{% else %}
-<div class="card mb-4 animate-in animate-delay-1">
-    <div class="card-body text-center py-4">
-        <i class="bi bi-person-plus" style="font-size: 3rem; color: var(--text3);"></i>
-        <h5 class="mt-2">Nie masz jeszcze karnetu?</h5>
-        <p class="text-muted mb-3" style="color: var(--text3) !important;">Kup karnet online i otrzymaj kod QR na email</p>
-        <a href="{{ url_for('client_buy') }}" class="btn btn-primary btn-lg glow-button">
-            <i class="bi bi-cart-fill"></i> Kup karnet
+    <div class="col-md-4 text-end">
+        <a href="{{ url_for('client_logout') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-box-arrow-right"></i> Wyloguj
         </a>
     </div>
 </div>
-{% endif %}
 
-<div class="card mb-4 animate-in animate-delay-2">
-    <div class="card-header"><i class="bi bi-clock-history"></i> Moje zakupy</div>
-    <div class="card-body p-0">
-        <table class="table table-hover mb-0">
-            <thead><tr><th>Karnet</th><th>Kwota</th><th>Data</th></tr></thead>
-            <tbody>
-                {% for p in purchases %}
-                <tr>
-                    <td>{{ p.type_name }}</td>
-                    <td><strong style="color: var(--accent4);">{{ p.amount|currency }}</strong></td>
-                    <td>{{ p.created_at|datetimefmt }}</td>
-                </tr>
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, msg in messages %}
+            <div class="alert alert-{{ category }}">{{ msg }}</div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+<div class="row g-3 mb-3">
+    {% if member_status == 'pending' %}
+    <div class="col-12">
+        <div class="alert alert-warning">
+            <i class="bi bi-hourglass-split"></i> Twoje konto oczekuje na zatwierdzenie przez personel. Gdy tylko zostanie zatwierdzone, otrzymasz powiadomienie.
+        </div>
+    </div>
+    {% elif member_status == 'expired' %}
+    <div class="col-12">
+        <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle"></i> Twój karnet wygasł. <a href="{{ url_for('client_buy') }}" style="color:var(--accent);font-weight:700;">Kup nowy karnet</a>
+        </div>
+    </div>
+    {% elif member_status == 'frozen' %}
+    <div class="col-12">
+        <div class="alert alert-info">
+            <i class="bi bi-snow2"></i> Twój karnet jest zamrożony. Skontaktuj się z personelem, aby go odmrozić.
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="col-md-4">
+        <div class="card text-center p-3">
+            <h6 class="text-muted small text-uppercase fw-bold">Status</h6>
+            {% if member_status == 'active' %}
+                <span class="badge bg-success fs-5 py-2">Aktywny</span>
+            {% elif member_status == 'pending' %}
+                <span class="badge bg-warning fs-5 py-2">Oczekujący</span>
+            {% elif member_status == 'expired' %}
+                <span class="badge bg-danger fs-5 py-2">Wygasły</span>
+            {% elif member_status == 'frozen' %}
+                <span class="badge bg-secondary fs-5 py-2">Zamrożony</span>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center p-3">
+            <h6 class="text-muted small text-uppercase fw-bold">Karnet</h6>
+            <p class="fw-bold mb-0">{{ type_name or 'Brak' }}</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center p-3">
+            <h6 class="text-muted small text-uppercase fw-bold">Pozostało wejść</h6>
+            <p class="fw-bold mb-0 fs-4">
+                {% if member.entries_left is not none %}
+                    {{ member.entries_left }} / {{ member.total_entries }}
                 {% else %}
-                <tr><td colspan="3" class="text-center text-muted py-4">Brak zakupów</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                    <i class="bi bi-infinity"></i>
+                {% endif %}
+            </p>
+        </div>
     </div>
 </div>
 
-<div class="d-flex gap-2 justify-content-center animate-in animate-delay-3">
-    {% if not member %}
-    <a href="{{ url_for('client_buy') }}" class="btn btn-primary btn-lg glow-button">
-        <i class="bi bi-cart-fill"></i> Kup karnet
-    </a>
-    {% endif %}
-    <a href="{{ url_for('client_buy') }}" class="btn btn-outline-secondary btn-lg">
-        <i class="bi bi-plus-circle"></i> Dokup karnet
-    </a>
-    <a href="{{ url_for('client_logout') }}" class="btn btn-outline-secondary btn-lg">
-        <i class="bi bi-box-arrow-right"></i> Wyloguj
-    </a>
+<div class="row g-3 mb-3">
+    <div class="col-md-6">
+        <div class="card text-center p-4">
+            <h6 class="text-muted small text-uppercase fw-bold">Twój kod QR</h6>
+            <div class="qr-display my-3">
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={{ member.qr_code }}" alt="QR" style="border-radius:12px;">
+                            </div>
+                            <p class="small text-muted">{{ member.qr_code }}</p>
+                            <a href="https://api.qrserver.com/v1/create-qr-code/?size=500x500&data={{ member.qr_code }}"
+               class="btn btn-sm btn-outline-secondary" download><i class="bi bi-download"></i> Pobierz</a>
+        </div>
+    </div>
+    <div class="col-md-6">
+        {% if member_status == 'active' %}
+        <div class="card p-4 text-center" style="height:100%;display:flex;align-items:center;justify-content:center;">
+            <a href="{{ url_for('client_buy') }}" class="btn btn-primary btn-lg w-100">
+                <i class="bi bi-cart-fill"></i> Kup karnet
+            </a>
+            <p class="small text-muted mt-2 mb-0">Kup nowy karnet lub przedłuż istniejący</p>
+        </div>
+        {% else %}
+        <div class="card p-4 text-center" style="height:100%;display:flex;align-items:center;justify-content:center;">
+            <h6 class="text-muted mb-0">Zakupy karnetów będą dostępne po aktywacji konta.</h6>
+        </div>
+        {% endif %}
+    </div>
 </div>
 
-<div class="text-center mt-4 animate-in animate-delay-4" style="border-top: 1px solid var(--border); padding-top: 20px;">
-    <a href="/login" style="display:inline-flex;align-items:center;gap:6px;color:var(--text3);text-decoration:none;font-size:0.8rem;transition:all 0.3s;padding:6px 14px;border-radius:8px;border:1px solid var(--border);"
-       onmouseover="this.style.color='var(--accent2)';this.style.borderColor='rgba(168,85,247,0.2)'"
-       onmouseout="this.style.color='var(--text3)';this.style.borderColor='var(--border)'">
-        <i class="bi bi-shield-person"></i> Panel pracownika
-        <i class="bi bi-arrow-right" style="font-size:0.7rem;"></i>
-    </a>
+<div class="card shadow-sm animate-in">
+    <div class="card-header"><i class="bi bi-clock-history"></i> Historia wejść</div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead><tr><th>Data</th><th>Typ</th></tr></thead>
+                <tbody>
+                    {% for h in history[:20] %}
+                    <tr>
+                        <td>{{ h.timestamp|datefmt }}</td>
+                        <td>{{ h.checkin_type }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="2" class="text-center text-muted py-4">Brak historii wejść</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm mt-3 animate-in">
+    <div class="card-header"><i class="bi bi-cart-check"></i> Historia zakupów</div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead><tr><th>Data</th><th>Karnet</th><th>Kwota</th><th>Status</th></tr></thead>
+                <tbody>
+                    {% for p in purchases[:20] %}
+                    <tr>
+                        <td>{{ p.timestamp|datefmt }}</td>
+                        <td>{{ p.type_name }}</td>
+                        <td>{{ p.amount }} PLN</td>
+                        <td><span class="badge bg-success">Opłacono</span></td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="4" class="text-center text-muted py-4">Brak zakupów</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
 {% endblock %}

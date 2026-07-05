@@ -40,13 +40,37 @@
                                 {% endfor %}
                             </select>
                         </div>
-                        {% if member %}
+                        {% if not member %}
+                        <div class="col-12">
+                            <label class="form-label">Typ karnetu</label>
+                            <div class="d-flex gap-4 mt-1">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="membership_kind" id="kindOnline" value="online" checked
+                                           style="width:20px;height:20px;border-radius:50%;border:2px solid var(--border2);background:var(--card2);cursor:pointer;">
+                                    <label class="form-check-label" for="kindOnline" style="cursor:pointer;">
+                                        <i class="bi bi-globe" style="color:var(--accent);"></i> Online
+                                        <small class="d-block text-muted" style="font-size:0.75rem;">Klient dostaje maila, ustawia hasło, czeka na akceptację</small>
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="membership_kind" id="kindPhysical" value="physical"
+                                           style="width:20px;height:20px;border-radius:50%;border:2px solid var(--border2);background:var(--card2);cursor:pointer;">
+                                    <label class="form-check-label" for="kindPhysical" style="cursor:pointer;">
+                                        <i class="bi bi-person-badge" style="color:var(--accent);"></i> Fizyczny
+                                        <small class="d-block text-muted" style="font-size:0.75rem;">Klient od razu aktywny, bez maila</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                    {% if member %}
                         <div class="col-md-6">
                             <label class="form-label">Status</label>
                             <select name="status" class="form-select">
                                 <option value="active" {{ 'selected' if member.status == 'active' }}>Aktywny</option>
                                 <option value="expired" {{ 'selected' if member.status == 'expired' }}>Wygasły</option>
                                 <option value="frozen" {{ 'selected' if member.status == 'frozen' }}>Zamrożony</option>
+                                <option value="pending" {{ 'selected' if member.status == 'pending' }}>Oczekujący</option>
                             </select>
                         </div>
                         {% endif %}

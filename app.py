@@ -98,8 +98,16 @@ def to_date(val):
 
 def member_status(member):
     today = date.today()
-    if member.get("status") == "frozen":
+    st = member.get("status", "active")
+    if st == "frozen":
         return "frozen"
+    if st == "rejected":
+        return "rejected"
+    if st == "pending":
+        return "pending"
+    invite_accepted = member.get("invite_accepted")
+    if invite_accepted is not None and invite_accepted == False and member.get("invite_code"):
+        return "pending"
     mem_type = mongo.db.membership_types.find_one(
         {"_id": ObjectId(member["membership_type_id"])}
     ) if member.get("membership_type_id") else None
@@ -113,7 +121,7 @@ def member_status(member):
         elif t == "entries":
             if member.get("entries_left", 0) <= 0:
                 return "expired"
-    return "active"
+    return st
 
 
 def generate_qr_base64(data):
@@ -127,7 +135,14 @@ def generate_qr_base64(data):
 
 
 def send_email(to_email, subject, html_content):
-    if not SENDGRID_API_KEY or SENDGRID_API_KEY.startswith("SG.") == False:
+    if not SENDGRID_API_KEY:
+        print("SendGrid API key not configured")
+        return False
+    if not SENDGRID_API_KEY.startswith("SG."):
+        print("Invalid SendGrid API key format")
+        return False
+    if not MAIL_FROM or "@" not in MAIL_FROM:
+        print(f"Invalid MAIL_FROM: {MAIL_FROM}")
         return False
     try:
         message = Mail(
@@ -137,7 +152,8 @@ def send_email(to_email, subject, html_content):
             html_content=html_content
         )
         sg = SendGridAPIClient(SENDGRID_API_KEY)
-        sg.send(message)
+        response = sg.send(message)
+        print(f"Email sent: {response.status_code}")
         return True
     except Exception as e:
         print(f"Email error: {e}")
@@ -432,41 +448,82 @@ def member_add():
         email = request.form.get("email", "").strip()
         membership_type_id = request.form.get("membership_type_id")
         notes = request.form.get("notes", "").strip()
+        membership_kind = request.form.get("membership_kind", "online")
         if not name:
             flash("Imię i nazwisko jest wymagane.", "danger")
             types = list(mongo.db.membership_types.find())
             return render_template("member_form.html", types=types)
         qr_code = str(uuid.uuid4())[:8].upper()
         now = datetime.now()
-        member_data = {
-            "name": name, "phone": phone, "email": email,
-            "membership_type_id": membership_type_id, "notes": notes,
-            "qr_code": qr_code, "status": "active",
-            "created_at": now, "created_by": current_user.id,
-        }
-        if membership_type_id:
-            mt = mongo.db.membership_types.find_one({"_id": ObjectId(membership_type_id)})
-            if mt:
-                if mt["type"] == "period":
-                    days = mt.get("duration_days", 30)
-                    member_data["start_date"] = now
-                    member_data["end_date"] = now + timedelta(days=days)
-                    member_data["entries_left"] = None
-                    member_data["total_entries"] = None
-                elif mt["type"] == "entries":
-                    entries = mt.get("entries_count", 10)
-                    member_data["start_date"] = now
-                    member_data["end_date"] = None
-                    member_data["entries_left"] = entries
-                    member_data["total_entries"] = entries
+        if not membership_type_id:
+            flash("Wybierz karnet.", "danger")
+            types = list(mongo.db.membership_types.find())
+            return render_template("member_form.html", types=types)
+        mt = mongo.db.membership_types.find_one({"_id": ObjectId(membership_type_id)})
+        if not mt:
+            flash("Karnet nie istnieje.", "danger")
+            types = list(mongo.db.membership_types.find())
+            return render_template("member_form.html", types=types)
+        def build_membership_data():
+            data = {"membership_type_id": membership_type_id, "start_date": now}
+            if mt["type"] == "period":
+                days = mt.get("duration_days", 30)
+                data["end_date"] = now + timedelta(days=days)
+                data["entries_left"] = None
+                data["total_entries"] = None
+            elif mt["type"] == "entries":
+                entries = mt.get("entries_count", 10)
+                data["end_date"] = None
+                data["entries_left"] = entries
+                data["total_entries"] = entries
+            return data
+        if membership_kind == "physical":
+            member_data = {
+                "name": name, "phone": phone, "email": email,
+                "membership_type_id": membership_type_id, "notes": notes,
+                "qr_code": qr_code, "status": "active",
+                "invite_code": None, "invite_accepted": False,
+                "password_hash": None,
+                "created_at": now, "created_by": current_user.id,
+            }
+            member_data.update(build_membership_data())
+            mongo.db.members.insert_one(member_data)
+            flash(f"Klient {name} dodany (fizyczny)! Kod QR: {qr_code}", "success")
+            return redirect(url_for("members"))
         else:
-            member_data["start_date"] = now
-            member_data["end_date"] = now + timedelta(days=30)
-            member_data["entries_left"] = None
-            member_data["total_entries"] = None
-        mongo.db.members.insert_one(member_data)
-        flash(f"Klient {name} dodany! Kod QR: {qr_code}", "success")
-        return redirect(url_for("members"))
+            existing = None
+            if email:
+                existing = mongo.db.members.find_one({"email": email, "invite_accepted": True})
+            if existing:
+                update = build_membership_data()
+                update["status"] = "active"
+                update["notes"] = existing.get("notes", "") + f"\n{now.strftime('%d.%m.%Y')}: nowy karnet ({mt['name']})"
+                mongo.db.members.update_one({"_id": existing["_id"]}, {"$set": update})
+                flash(f"Karnet {mt['name']} dodany do istniejącego konta {existing['name']}!", "success")
+                return redirect(url_for("members"))
+            invite_code = str(uuid.uuid4())[:8].upper()
+            member_data = {
+                "name": name, "phone": phone, "email": email,
+                "membership_type_id": membership_type_id, "notes": notes,
+                "qr_code": qr_code, "status": "pending",
+                "invite_code": invite_code,
+                "invite_sent_at": now,
+                "invite_accepted": False,
+                "password_hash": None,
+                "created_at": now, "created_by": current_user.id,
+            }
+            member_data.update(build_membership_data())
+            mongo.db.members.insert_one(member_data)
+            invited = False
+            if email:
+                invited = send_invite_email(email, name, invite_code)
+            msg = f"Klient {name} dodany (online)! Kod QR: {qr_code}"
+            if invited:
+                msg += f" Zaproszenie wysłane na {email}."
+            else:
+                msg += f" Nie udało się wysłać maila. Kod zaproszenia: {invite_code}"
+            flash(msg, "success")
+            return redirect(url_for("members"))
     types = list(mongo.db.membership_types.find())
     return render_template("member_form.html", types=types)
 
@@ -527,11 +584,12 @@ def member_detail(member_id):
         mt = mongo.db.membership_types.find_one({"_id": ObjectId(member["membership_type_id"])})
     st = member_status(member)
     checkins = list(mongo.db.checkins.find({"member_id": member_id}).sort("timestamp", -1).limit(50))
-    qr_b64 = generate_qr_base64(member["qr_code"])
+    qr_b64 = generate_qr_base64(member.get("qr_code", str(member["_id"])))
     membership_types = list(mongo.db.membership_types.find())
+    purchases = list(mongo.db.purchases.find({"email": member.get("email", "")}).sort("created_at", -1))
     return render_template("member_detail.html", member=member, membership_type=mt,
-                           status=st, checkins=checkins, qr_b64=qr_b64,
-                           membership_types=membership_types)
+                           member_status=st, history=checkins, qr_b64=qr_b64,
+                           membership_types=membership_types, purchases=purchases)
 
 
 @app.route("/members/delete/<member_id>")
@@ -580,6 +638,62 @@ def member_renew(member_id):
     return redirect(url_for("member_detail", member_id=member_id))
 
 
+# ===================== MEMBER ACCEPT / APPROVE =====================
+
+@app.route("/members/accept/<member_id>")
+@login_required
+@admin_required
+def member_accept(member_id):
+    member = mongo.db.members.find_one({"_id": ObjectId(member_id)})
+    if not member:
+        flash("Klient nie istnieje.", "danger")
+        return redirect(url_for("members"))
+    mongo.db.members.update_one(
+        {"_id": ObjectId(member_id)},
+        {"$set": {"status": "active"}}
+    )
+    flash(f"Klient {member['name']} zatwierdzony!", "success")
+    return redirect(url_for("members"))
+
+
+@app.route("/members/reject/<member_id>")
+@login_required
+@admin_required
+def member_reject(member_id):
+    member = mongo.db.members.find_one({"_id": ObjectId(member_id)})
+    if not member:
+        flash("Klient nie istnieje.", "danger")
+        return redirect(url_for("members"))
+    mongo.db.members.update_one(
+        {"_id": ObjectId(member_id)},
+        {"$set": {"status": "rejected"}}
+    )
+    flash(f"Klient {member['name']} odrzucony.", "warning")
+    return redirect(url_for("members"))
+
+
+@app.route("/members/resend-invite/<member_id>")
+@login_required
+@admin_required
+def member_resend_invite(member_id):
+    member = mongo.db.members.find_one({"_id": ObjectId(member_id)})
+    if not member:
+        flash("Klient nie istnieje.", "danger")
+        return redirect(url_for("members"))
+    invite_code = member.get("invite_code") or str(uuid.uuid4())[:8].upper()
+    if not member.get("invite_code"):
+        mongo.db.members.update_one(
+            {"_id": ObjectId(member_id)},
+            {"$set": {"invite_code": invite_code}}
+        )
+    sent = send_invite_email(member["email"], member["name"], invite_code)
+    if sent:
+        flash(f"Zaproszenie wysłane na {member['email']}!", "success")
+    else:
+        flash(f"Nie udało się wysłać maila. Kod: {invite_code}", "warning")
+    return redirect(url_for("member_detail", member_id=member_id))
+
+
 # ===================== BULK DELETE =====================
 
 @app.route("/admin/bulk-delete", methods=["POST"])
@@ -596,6 +710,21 @@ def bulk_delete():
     mongo.db.membership_types.delete_many({})
     flash("Wszystkie dane klientów, historii i karnetów usunięte!", "warning")
     return redirect(url_for("dashboard"))
+
+
+@app.route("/members/bulk-delete", methods=["POST"])
+@login_required
+@admin_required
+def members_bulk_delete():
+    confirm = request.form.get("confirm", "")
+    if confirm != "USUN-WSZYSTKO":
+        flash("Potwierdź wpisując 'USUN-WSZYSTKO'.", "danger")
+        return redirect(url_for("members"))
+    mongo.db.members.delete_many({})
+    mongo.db.checkins.delete_many({})
+    mongo.db.purchases.delete_many({})
+    flash("Wszyscy klienci usunięci!", "warning")
+    return redirect(url_for("members"))
 
 
 # ===================== SCAN / CHECK-IN =====================
@@ -826,6 +955,25 @@ def export_history():
     return Response(output.getvalue(), mimetype="text/csv", headers={"Content-Disposition": "attachment;filename=historia_wejsc.csv", "Content-Type": "text/csv; charset=utf-8"})
 
 
+@app.route("/export/member-history/<member_id>")
+@login_required
+def export_member_history(member_id):
+    import csv, io
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Data", "Typ", "Metoda", "Pracownik"])
+    member = mongo.db.members.find_one({"_id": ObjectId(member_id)})
+    if member:
+        for c in mongo.db.checkins.find({"member_id": member_id}).sort("timestamp", -1):
+            checker = mongo.db.users.find_one({"_id": ObjectId(c["checked_by"])}) if ObjectId.is_valid(c["checked_by"]) else None
+            writer.writerow([c["timestamp"].strftime("%d.%m.%Y %H:%M") if isinstance(c.get("timestamp"), datetime) else str(c.get("timestamp", "")),
+                             c.get("method", ""), c.get("source", "staff"),
+                             checker["name"] if checker else ""])
+    output.seek(0)
+    from flask import Response
+    return Response(output.getvalue(), mimetype="text/csv", headers={"Content-Disposition": f"attachment;filename={member['name'] if member else 'klient'}_historia.csv", "Content-Type": "text/csv; charset=utf-8"})
+
+
 # ===================== CLIENT PORTAL =====================
 
 @app.route("/client")
@@ -833,77 +981,114 @@ def client_home():
     return redirect(url_for("client_login"))
 
 
+def send_invite_email(email, member_name, invite_code):
+    link = request.host_url + f"client/invite/{invite_code}"
+    sent = send_email(
+        email,
+        f"Zaproszenie do {app.config['APP_NAME']}",
+        f"""
+        <div style="font-family:'Inter',sans-serif;max-width:480px;margin:0 auto;background:#000;border-radius:24px;padding:40px;text-align:center;border:1px solid rgba(168,85,247,0.2);">
+            <h2 style="color:#a855f7;margin-bottom:8px;">{app.config['APP_NAME']}</h2>
+            <p style="color:#a0a0c0;margin-bottom:24px;">Cześć {member_name}!<br>Pracownik siłowni dodał Cię do systemu.</p>
+            <a href="{link}" style="display:inline-block;background:linear-gradient(135deg,#a855f7,#7c3aed);color:#fff;text-decoration:none;padding:14px 40px;border-radius:12px;font-weight:700;font-size:16px;">Ustaw hasło i aktywuj konto</a>
+            <p style="color:#606080;font-size:13px;margin-top:24px;">Link ważny przez 48h. Zignoruj jeśli to nie Ty.</p>
+        </div>
+        """
+    )
+    return sent
+
+
 @app.route("/client/login", methods=["GET", "POST"])
 def client_login():
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()
-        if not email or "@" not in email:
-            flash("Podaj prawidłowy adres email.", "danger")
+        password = request.form.get("password", "")
+        if not email or not password:
+            flash("Email i hasło są wymagane.", "danger")
             return render_template("client_login.html")
-        code = "".join(random.choices(string.digits, k=6))
-        mongo.db.verification_codes.insert_one({
-            "email": email, "code": code,
-            "created_at": datetime.now(),
-            "used": False
-        })
-        sent = send_email(
-            email,
-            f"Twój kod weryfikacyjny - {app.config['APP_NAME']}",
-            f"""
-            <div style="font-family: 'Inter', sans-serif; max-width: 480px; margin: 0 auto; background: #0f0f1f; border-radius: 24px; padding: 40px; text-align: center;">
-                <div style="font-size: 48px; margin-bottom: 20px;">💪</div>
-                <h2 style="color: #00f0ff; margin-bottom: 8px;">{app.config['APP_NAME']}</h2>
-                <p style="color: #9898b8; margin-bottom: 24px;">Twój kod weryfikacyjny</p>
-                <div style="background: #1a1a30; border-radius: 16px; padding: 20px; margin-bottom: 24px;">
-                    <span style="font-size: 36px; letter-spacing: 12px; font-weight: 800; color: #00f0ff;">{code}</span>
-                </div>
-                <p style="color: #5a5a7a; font-size: 13px;">Kod ważny przez 10 minut.</p>
-            </div>
-            """
-        )
-        if sent:
+        member = mongo.db.members.find_one({"email": email})
+        if not member or not member.get("password_hash"):
+            flash("Nieprawidłowy email lub hasło. Jeśli nie masz konta, poproś pracownika o zaproszenie.", "danger")
+            return render_template("client_login.html")
+        if not member.get("invite_accepted"):
+            flash("Twoje konto nie zostało jeszcze aktywowane przez pracownika.", "warning")
+            return render_template("client_login.html")
+        if bcrypt.check_password_hash(member["password_hash"], password):
             session["client_email"] = email
-            flash("Kod wysłany na Twój email!", "success")
-            return redirect(url_for("client_verify"))
-        else:
-            flash(f"Nie udało się wysłać maila. Skontaktuj się z recepcją. Twój kod: {code}", "warning")
-            session["client_email"] = email
-            session["dev_code"] = code
-            return redirect(url_for("client_verify"))
+            session["client_id"] = str(member["_id"])
+            flash("Zalogowano pomyślnie!", "success")
+            return redirect(url_for("client_dashboard"))
+        flash("Nieprawidłowe hasło.", "danger")
     return render_template("client_login.html")
 
 
-@app.route("/client/verify", methods=["GET", "POST"])
-def client_verify():
-    email = session.get("client_email")
-    if not email:
+@app.route("/client/request-invite", methods=["GET", "POST"])
+def client_request_invite():
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        if not email:
+            flash("Podaj adres email.", "danger")
+            return render_template("client_request_invite.html")
+        existing = mongo.db.members.find_one({"email": email})
+        if existing:
+            flash("Konto z tym adresem email już istnieje. Zaloguj się.", "info")
+            return redirect(url_for("client_login"))
+        flash(f"Dziękujemy! Personel został powiadomiony o Twojej prośbie.", "success")
+        return redirect(url_for("client_login"))
+    return render_template("client_request_invite.html")
+
+
+@app.route("/client/invite/<invite_code>", methods=["GET", "POST"])
+def client_invite(invite_code):
+    member = mongo.db.members.find_one({"invite_code": invite_code.upper()})
+    if not member:
+        flash("Nieprawidłowy lub wygasły link zaproszenia.", "danger")
+        return redirect(url_for("client_login"))
+    if member.get("invite_accepted"):
+        flash("Konto już aktywowane. Zaloguj się.", "info")
         return redirect(url_for("client_login"))
     if request.method == "POST":
-        code = request.form.get("code", "").strip()
-        dev_code = session.get("dev_code")
-        valid = mongo.db.verification_codes.find_one({
-            "email": email, "code": code, "used": False,
-            "created_at": {"$gte": datetime.now() - timedelta(minutes=10)}
-        })
-        if valid or (dev_code and code == dev_code):
-            if valid:
-                mongo.db.verification_codes.update_one({"_id": valid["_id"]}, {"$set": {"used": True}})
-            session["client_verified"] = True
-            session.pop("dev_code", None)
-            flash("Zweryfikowano pomyślnie!", "success")
-            return redirect(url_for("client_dashboard"))
-        flash("Nieprawidłowy kod.", "danger")
-    return render_template("client_verify.html")
+        password = request.form.get("password", "")
+        confirm = request.form.get("confirm", "")
+        if len(password) < 4:
+            flash("Hasło musi mieć min. 4 znaki.", "danger")
+            return render_template("client_set_password.html", email=member.get("email", ""), token=invite_code)
+        if password != confirm:
+            flash("Hasła nie są zgodne.", "danger")
+            return render_template("client_set_password.html", email=member.get("email", ""), token=invite_code)
+        hashed = bcrypt.generate_password_hash(password).decode("utf-8")
+        mongo.db.members.update_one(
+            {"_id": member["_id"]},
+            {"$set": {
+                "password_hash": hashed,
+                "invite_accepted": True,
+                "invite_accepted_at": datetime.now()
+            }}
+        )
+        flash("Konto aktywowane! Teraz pracownik musi zatwierdzić Twoje konto.", "success")
+        return redirect(url_for("client_login"))
+    return render_template("client_set_password.html", email=member.get("email", ""), token=invite_code)
 
 
 @app.route("/client/dashboard")
 def client_dashboard():
-    if not session.get("client_verified") or not session.get("client_email"):
+    if not session.get("client_email"):
         return redirect(url_for("client_login"))
     email = session["client_email"]
     member = mongo.db.members.find_one({"email": email})
+    if not member:
+        session.clear()
+        flash("Konto nie istnieje.", "danger")
+        return redirect(url_for("client_login"))
+    st = member_status(member)
+    mt = None
+    if member.get("membership_type_id"):
+        mt = mongo.db.membership_types.find_one({"_id": ObjectId(member["membership_type_id"])})
+    checkins = list(mongo.db.checkins.find({"member_id": str(member["_id"])}).sort("timestamp", -1).limit(50))
     purchases = list(mongo.db.purchases.find({"email": email}).sort("created_at", -1))
-    return render_template("client_dashboard.html", member=member, purchases=purchases)
+    return render_template("client_dashboard.html", member=member, member_status=st,
+                           type_name=mt["name"] if mt else "Brak",
+                           history=checkins, purchases=purchases)
 
 
 @app.route("/client/logout")
@@ -914,7 +1099,7 @@ def client_logout():
 
 @app.route("/client/buy")
 def client_buy():
-    if not session.get("client_verified") or not session.get("client_email"):
+    if not session.get("client_email"):
         return redirect(url_for("client_login"))
     types = list(mongo.db.membership_types.find())
     return render_template("client_buy.html", types=types, STRIPE_PUBLISHABLE_KEY=STRIPE_PUBLISHABLE_KEY)
@@ -922,7 +1107,7 @@ def client_buy():
 
 @app.route("/client/create-checkout-session", methods=["POST"])
 def client_create_checkout():
-    if not session.get("client_verified") or not session.get("client_email"):
+    if not session.get("client_email"):
         return jsonify({"error": "Unauthorized"}), 401
     type_id = request.form.get("type_id")
     mt = mongo.db.membership_types.find_one({"_id": ObjectId(type_id)})
@@ -954,40 +1139,54 @@ def client_create_checkout():
 def client_success():
     session_id = request.args.get("session_id")
     if not session_id:
+        flash("Brak ID sesji Stripe.", "warning")
+        return redirect(url_for("client_dashboard"))
+    if not stripe.api_key or stripe.api_key.startswith("sk_test_") == False:
+        flash("Stripe nie jest skonfigurowane (klucz API).", "danger")
         return redirect(url_for("client_dashboard"))
     try:
         checkout_session = stripe.checkout.Session.retrieve(session_id)
-        if checkout_session.payment_status == "paid":
-            email = checkout_session.customer_email
-            type_id = checkout_session.metadata.get("type_id")
-            mt = mongo.db.membership_types.find_one({"_id": ObjectId(type_id)})
-            if mt and email:
-                existing = mongo.db.members.find_one({"email": email})
-                qr_code = str(uuid.uuid4())[:8].upper()
-                now = datetime.now()
-                purchase_data = {
-                    "email": email, "type_id": type_id,
-                    "type_name": mt["name"], "amount": mt["price"],
-                    "stripe_session": session_id, "created_at": now
-                }
-                mongo.db.purchases.insert_one(purchase_data)
-                if existing:
-                    flash(f"Karnet {mt['name']} opłacony! Możesz go odebrać w recepcji.", "success")
-                else:
-                    mongo.db.members.insert_one({
-                        "name": email.split("@")[0], "phone": "", "email": email,
-                        "membership_type_id": type_id, "notes": "Zakup online",
-                        "qr_code": qr_code, "status": "active",
-                        "created_at": now, "created_by": None,
-                        "start_date": now,
-                        **({"end_date": now + timedelta(days=mt["duration_days"]), "entries_left": None, "total_entries": None}
-                           if mt["type"] == "period" else
-                           {"end_date": None, "entries_left": mt["entries_count"], "total_entries": mt["entries_count"]})
-                    })
-                    flash(f"Karnet {mt['name']} aktywowany! Twój kod QR: {qr_code}", "success")
-            flash("Płatność zakończona sukcesem!", "success")
     except Exception as e:
-        flash(f"Błąd weryfikacji płatności: {e}", "danger")
+        flash(f"Błąd pobierania sesji Stripe: {e}. Sprawdź czy klucz API jest poprawny.", "danger")
+        return redirect(url_for("client_dashboard"))
+    if checkout_session.payment_status == "paid":
+        email = checkout_session.customer_email
+        type_id = checkout_session.metadata.get("type_id")
+        mt = mongo.db.membership_types.find_one({"_id": ObjectId(type_id)})
+        if mt and email:
+            existing = mongo.db.members.find_one({"email": email})
+            qr_code = str(uuid.uuid4())[:8].upper()
+            now = datetime.now()
+            purchase_data = {
+                "email": email, "type_id": type_id,
+                "type_name": mt["name"], "amount": mt["price"],
+                "stripe_session": session_id, "created_at": now
+            }
+            mongo.db.purchases.insert_one(purchase_data)
+            if existing:
+                flash(f"Karnet {mt['name']} opłacony! Kod QR: {existing.get('qr_code', 'w recepcji')}", "success")
+            else:
+                invite_code = str(uuid.uuid4())[:8].upper()
+                mongo.db.members.insert_one({
+                    "name": email.split("@")[0], "phone": "", "email": email,
+                    "membership_type_id": type_id, "notes": "Zakup online",
+                    "qr_code": qr_code, "status": "pending",
+                    "invite_code": invite_code, "invite_accepted": False,
+                    "password_hash": None,
+                    "created_at": now, "created_by": None,
+                    "start_date": now,
+                    **({"end_date": now + timedelta(days=mt["duration_days"]),
+                        "entries_left": None, "total_entries": None}
+                       if mt["type"] == "period" else
+                       {"end_date": None,
+                        "entries_left": mt["entries_count"],
+                        "total_entries": mt["entries_count"]})
+                })
+                flash(f"Karnet opłacony! Sprawdź email, aby ustawić hasło. Kod QR: {qr_code}", "success")
+        else:
+            flash(f"Płatność OK, ale nie znaleziono karnetu.", "warning")
+    else:
+        flash(f"Płatność: {checkout_session.payment_status}.", "warning")
     return redirect(url_for("client_dashboard"))
 
 

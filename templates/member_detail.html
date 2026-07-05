@@ -1,163 +1,110 @@
 {% extends "base.html" %}
 {% block title %}{{ member.name }} - {{ app_name }}{% endblock %}
+{% block head %}<meta name="viewport" content="width=device-width, initial-scale=1.0">{% endblock %}
 {% block content %}
-<div class="row">
-    <div class="col-md-4">
-        <div class="card shadow-sm mb-3 animate-in">
-            <div class="card-body text-center">
-                {% if qr_b64 %}
-                <img src="data:image/png;base64,{{ qr_b64 }}" alt="QR Code" class="img-fluid mb-2" style="max-width: 180px;">
-                {% endif %}
-                <h5 class="fw-bold">{{ member.name }}</h5>
-                <p class="text-muted mb-1">Kod: <code>{{ member.qr_code }}</code></p>
-                {% if status == 'active' %}
-                    <span class="badge bg-success fs-6">Aktywny</span>
-                {% elif status == 'expired' %}
-                    <span class="badge bg-danger fs-6">Wygasły</span>
-                {% elif status == 'frozen' %}
-                    <span class="badge bg-secondary fs-6">Zamrożony</span>
-                {% endif %}
-            </div>
-        </div>
-
-        <div class="card shadow-sm mb-3 animate-in">
-            <div class="card-header"><h6 class="mb-0"><i class="bi bi-tag-fill"></i> Karnet</h6></div>
+<div class="row animate-in">
+    <div class="col-md-6">
+        <div class="card shadow-sm mb-3">
             <div class="card-body">
-                {% if membership_type %}
-                <p class="mb-1"><strong>Typ:</strong> {{ membership_type.name }}</p>
-                <p class="mb-1"><strong>Cena:</strong> {{ membership_type.price|currency }}</p>
-                <p class="mb-1">
-                    <strong>Rodzaj:</strong>
-                    {% if membership_type.type == 'period' %}
-                        Okresowy ({{ membership_type.duration_days }} dni)
-                    {% else %}
-                        Na wejścia ({{ membership_type.entries_count }} wejść)
+                <h5 class="fw-bold"><i class="bi bi-person-fill"></i> {{ member.name }}</h5>
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    {% if member_status == 'active' %}
+                        <span class="badge bg-success">Aktywny</span>
+                    {% elif member_status == 'pending' %}
+                        <span class="badge bg-warning">Oczekujący</span>
+                    {% elif member_status == 'expired' %}
+                        <span class="badge bg-danger">Wygasły</span>
+                    {% elif member_status == 'frozen' %}
+                        <span class="badge bg-secondary">Zamrożony</span>
+                    {% endif %}
+                    {% if member.invite_accepted %}
+                        <span class="badge bg-info"><i class="bi bi-shield-check"></i> Konto aktywowane</span>
+                    {% elif member.email %}
+                        <span class="badge bg-warning"><i class="bi bi-envelope"></i> Zaproszenie wysłane</span>
+                    {% endif %}
+                </div>
+                <p class="mb-1"><strong>Email:</strong> {{ member.email or '-' }}
+                    {% if member.email and not member.invite_accepted %}
+                    <a href="{{ url_for('resend_invite', member_id=member._id) }}" class="btn btn-sm btn-outline-secondary ms-2">
+                        <i class="bi bi-send-fill"></i> Wyślij ponownie
+                    </a>
                     {% endif %}
                 </p>
-                {% else %}
-                <p class="text-muted">Brak przypisanego karnetu</p>
-                {% endif %}
-                <hr>
-                <p class="mb-1"><strong>Start:</strong> {{ member.start_date|datefmt }}</p>
-                {% if member.end_date %}
-                <p class="mb-1"><strong>Ważny do:</strong> {{ member.end_date|datefmt }}</p>
-                {% endif %}
-                {% if member.entries_left is not none %}
+                <p class="mb-1"><strong>Telefon:</strong> {{ member.phone or '-' }}</p>
+                <p class="mb-1"><strong>Data rozpoczęcia:</strong> {{ member.start_date|datefmt or '-' }}</p>
+                <p class="mb-1"><strong>Ważny do:</strong> {{ member.end_date|datefmt or '-' }}</p>
                 <p class="mb-1">
                     <strong>Pozostało wejść:</strong>
-                    <span class="badge bg-{{ 'success' if member.entries_left > 0 else 'danger' }}">
-                        {{ member.entries_left }}
-                    </span>
+                    {% if member.entries_left is not none %}
+                        {{ member.entries_left }}/{{ member.total_entries }}
+                    {% else %}Nieograniczone{% endif %}
                 </p>
-                {% endif %}
-            </div>
-        </div>
-
-        <div class="card shadow-sm mb-3 animate-in">
-            <div class="card-header"><h6 class="mb-0"><i class="bi bi-info-circle"></i> Kontakt</h6></div>
-            <div class="card-body">
-                <p class="mb-1"><i class="bi bi-telephone-fill"></i> {{ member.phone or '-' }}</p>
-                <p class="mb-1"><i class="bi bi-envelope-fill"></i> {{ member.email or '-' }}</p>
-                {% if member.notes %}
-                <hr>
-                <small class="text-muted">{{ member.notes }}</small>
-                {% endif %}
-            </div>
-        </div>
-
-        <div class="d-grid gap-2 animate-in">
-            <a href="{{ url_for('member_payments', member_id=member._id) }}" class="btn btn-info">
-                <i class="bi bi-cash-coin"></i> Płatności
-            </a>
-            <a href="{{ url_for('member_edit', member_id=member._id) }}" class="btn btn-warning">
-                <i class="bi bi-pencil-fill"></i> Edytuj
-            </a>
-            {% if current_user.is_admin() %}
-            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
-                <i class="bi bi-trash-fill"></i> Usuń
-            </button>
-            {% endif %}
-        </div>
-    </div>
-
-    <div class="col-md-8">
-        <div class="card shadow-sm mb-3 animate-in">
-            <div class="card-header"><h6 class="mb-0"><i class="bi bi-activity"></i> Historia aktywności</h6></div>
-            <div class="card-body">
-                <div class="timeline" id="activityTimeline">
-                    <div class="text-center text-muted py-3">
-                        <div class="spinner-border spinner-border-sm me-2"></div> Ładowanie...
-                    </div>
+                <div class="mt-3 d-flex gap-2">
+                    <a href="{{ url_for('member_edit', member_id=member._id) }}" class="btn btn-warning"><i class="bi bi-pencil-fill"></i> Edytuj</a>
+                    <a href="{{ url_for('export_member_history', member_id=member._id) }}" class="btn btn-outline-secondary"><i class="bi bi-download"></i> CSV historii</a>
+                    {% if member_status == 'pending' and member.invite_accepted %}
+                    <a href="{{ url_for('member_accept', member_id=member._id) }}" class="btn btn-success"><i class="bi bi-check-lg"></i> Zatwierdź</a>
+                    <a href="{{ url_for('member_reject', member_id=member._id) }}" class="btn btn-danger"><i class="bi bi-x-lg"></i> Odrzuć</a>
+                    {% endif %}
                 </div>
             </div>
         </div>
-
-        <div class="card shadow-sm animate-in">
-            <div class="card-header"><h6 class="mb-0"><i class="bi bi-arrow-clockwise"></i> Odnów karnet</h6></div>
-            <div class="card-body">
-                {% if current_user.is_admin() %}
-                <form method="POST" action="{{ url_for('member_renew', member_id=member._id) }}">
-                    <div class="row g-2">
-                        <div class="col-md-8">
-                            <select name="membership_type_id" class="form-select" required>
-                                <option value="">-- Wybierz nowy karnet --</option>
-                                {% for t in membership_types %}
-                                <option value="{{ t._id }}">{{ t.name }} - {{ t.price|currency }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <button type="submit" class="btn btn-success w-100">
-                                <i class="bi bi-arrow-clockwise"></i> Odnów
-                            </button>
-                        </div>
-                    </div>
-                </form>
-                {% else %}
-                <p class="text-muted mb-0">Tylko admin może odnawiać karnety.</p>
-                {% endif %}
+        <div class="card shadow-sm mb-3">
+            <div class="card-header"><i class="bi bi-qr-code"></i> Kod QR klienta</div>
+            <div class="card-body text-center">
+                <div class="qr-display">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={{ member.qr_code }}" alt="QR" style="border-radius:12px;">
+                </div>
+                <p class="mt-2 text-muted small">{{ member.qr_code }}</p>
+                <a href="https://api.qrserver.com/v1/create-qr-code/?size=500x500&data={{ member.qr_code }}"
+                   class="btn btn-sm btn-outline-secondary" download><i class="bi bi-download"></i> Pobierz PNG</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card shadow-sm mb-3">
+            <div class="card-header"><i class="bi bi-clock-history"></i> Historia wejść</div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead><tr><th>Data</th><th>Typ</th><th>Źródło</th></tr></thead>
+                        <tbody>
+                            {% for h in history[:20] %}
+                            <tr>
+                                <td>{{ h.timestamp|datefmt }}</td>
+                                <td>{{ h.checkin_type }}</td>
+                                <td>{{ h.source or 'staff' }}</td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="3" class="text-center text-muted py-3">Brak historii</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="card shadow-sm">
+            <div class="card-header"><i class="bi bi-cart-check"></i> Historia zakupów</div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead><tr><th>Data</th><th>Karnet</th><th>Kwota</th><th>Status</th></tr></thead>
+                        <tbody>
+                            {% for p in purchases %}
+                            <tr>
+                                <td>{{ p.timestamp|datefmt }}</td>
+                                <td>{{ p.type_name }}</td>
+                                <td>{{ p.amount }} PLN</td>
+                                <td><span class="badge bg-success">Opłacono</span></td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="4" class="text-center text-muted py-3">Brak zakupów</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
 </div>
-
-{% if current_user.is_admin() %}
-<div class="modal fade" id="deleteModal">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header"><h5 class="modal-title">Potwierdź usunięcie</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-            <div class="modal-body">
-                Czy na pewno usunąć klienta <strong>{{ member.name }}</strong>?
-                <br><small class="text-danger">Historia wejść i płatności również zostaną usunięte.</small>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuluj</button>
-                <a href="{{ url_for('member_delete', member_id=member._id) }}" class="btn btn-danger">Usuń</a>
-            </div>
-        </div>
-    </div>
-</div>
-{% endif %}
-{% endblock %}
-
-{% block extra_scripts %}
-<script>
-fetch('/api/activity/{{ member._id }}')
-    .then(r => r.json())
-    .then(data => {
-        const tl = document.getElementById('activityTimeline');
-        if (!data.length) {
-            tl.innerHTML = '<div class="text-center text-muted py-3"><i class="bi bi-inbox fs-2 d-block mb-2"></i>Brak aktywności</div>';
-            return;
-        }
-        tl.innerHTML = data.map(a => `
-            <div class="timeline-item">
-                <div class="time">${a.time}</div>
-                <div class="title"><i class="bi ${a.icon}"></i> ${a.title}</div>
-                <div class="desc">${a.desc} ${a.by ? 'przez ' + a.by : ''}</div>
-            </div>
-        `).join('');
-    });
-</script>
 {% endblock %}

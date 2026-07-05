@@ -4,6 +4,11 @@
 <div class="d-flex justify-content-between align-items-center mb-3 animate-in">
     <h4 class="fw-bold"><i class="bi bi-people-fill"></i> Klienci</h4>
     <div>
+        {% if current_user.is_admin() %}
+        <button type="button" class="btn btn-outline-danger btn-sm me-2" data-bs-toggle="modal" data-bs-target="#bulkDeleteModal">
+            <i class="bi bi-trash-fill"></i> Usuń bazę
+        </button>
+        {% endif %}
         <a href="{{ url_for('export_members') }}" class="btn btn-outline-secondary btn-sm me-2">
             <i class="bi bi-download"></i> CSV
         </a>
@@ -24,6 +29,7 @@
         <select name="status" class="form-select">
             <option value="">Status</option>
             <option value="active" {{ 'selected' if status_filter == 'active' }}>Aktywny</option>
+            <option value="pending" {{ 'selected' if status_filter == 'pending' }}>Oczekujący</option>
             <option value="expired" {{ 'selected' if status_filter == 'expired' }}>Wygasły</option>
             <option value="frozen" {{ 'selected' if status_filter == 'frozen' }}>Zamrożony</option>
         </select>
@@ -63,12 +69,19 @@
                             <a href="{{ url_for('member_detail', member_id=item.member._id) }}" class="fw-semibold">
                                 {{ item.member.name }}
                             </a>
+                            {% if item.member.email and item.member.invite_accepted %}
+                                <i class="bi bi-shield-check" style="color:var(--accent);font-size:0.75rem;" title="Konto aktywowane"></i>
+                            {% elif item.member.email %}
+                                <i class="bi bi-envelope" style="color:var(--text3);font-size:0.75rem;" title="Zaproszenie wysłane"></i>
+                            {% endif %}
                         </td>
                         <td>{{ item.member.phone or '-' }}</td>
                         <td>{{ item.type.name if item.type else 'Brak' }}</td>
                         <td>
                             {% if item.status == 'active' %}
                                 <span class="badge bg-success">Aktywny</span>
+                            {% elif item.status == 'pending' %}
+                                <span class="badge bg-warning">Oczekujący</span>
                             {% elif item.status == 'expired' %}
                                 <span class="badge bg-danger">Wygasły</span>
                             {% elif item.status == 'frozen' %}
@@ -85,6 +98,14 @@
                             <a href="{{ url_for('member_detail', member_id=item.member._id) }}" class="btn btn-sm btn-info" title="Szczegóły">
                                 <i class="bi bi-eye-fill"></i>
                             </a>
+                            {% if item.status == 'pending' and item.member.invite_accepted %}
+                            <a href="{{ url_for('member_accept', member_id=item.member._id) }}" class="btn btn-sm btn-success" title="Zatwierdź">
+                                <i class="bi bi-check-lg"></i>
+                            </a>
+                            <a href="{{ url_for('member_reject', member_id=item.member._id) }}" class="btn btn-sm btn-danger" title="Odrzuć">
+                                <i class="bi bi-x-lg"></i>
+                            </a>
+                            {% endif %}
                             <a href="{{ url_for('member_edit', member_id=item.member._id) }}" class="btn btn-sm btn-warning" title="Edytuj">
                                 <i class="bi bi-pencil-fill"></i>
                             </a>
@@ -103,4 +124,24 @@
         </div>
     </div>
 </div>
+
+{% if current_user.is_admin() %}
+<div class="modal fade" id="bulkDeleteModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title text-danger"><i class="bi bi-exclamation-triangle"></i> Usuń wszystkich klientów</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <p class="text-danger fw-bold">Tej operacji nie można cofnąć!</p>
+                <p>Zostaną usunięci wszyscy klienci, historia wejść i zakupów.</p>
+                <form method="POST" action="{{ url_for('members_bulk_delete') }}">
+                    <label class="form-label">Wpisz <code>USUN-WSZYSTKO</code> aby potwierdzić:</label>
+                    <input type="text" name="confirm" class="form-control" required>
+                    <button type="submit" class="btn btn-danger mt-3 w-100">Usuń wszystko</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}
