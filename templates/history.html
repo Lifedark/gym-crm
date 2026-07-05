@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Historia - {{ app_name }}{% endblock %}
+{% block content %}
+<h4><i class="bi bi-clock-history"></i> Historia wejść</h4>
+<p class="text-muted">Łącznie: {{ total }} wejść</p>
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Data i czas</th>
+                        <th>Klient</th>
+                        <th>Pracownik</th>
+                        <th>Metoda</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in checkins %}
+                    <tr>
+                        <td>{{ c.timestamp|datetimefmt }}</td>
+                        <td>
+                            {% if c.member %}
+                            <a href="{{ url_for('member_detail', member_id=c.member._id) }}">{{ c.member.name }}</a>
+                            {% else %}
+                            <span class="text-muted">Usunięty</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ c.checker.name if c.checker else '-' }}</td>
+                        <td>
+                            {% if c.method == 'scan' %}
+                                <span class="badge bg-info">Skan QR</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Ręcznie</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="text-center text-muted py-4">
+                            <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                            Brak historii
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% if total_pages > 1 %}
+<nav class="mt-3">
+    <ul class="pagination justify-content-center">
+        <li class="page-item {{ 'disabled' if page <= 1 }}">
+            <a class="page-link" href="{{ url_for('history', page=page-1) }}">Poprzednia</a>
+        </li>
+        {% for p in range(1, total_pages + 1) %}
+        <li class="page-item {{ 'active' if p == page }}">
+            <a class="page-link" href="{{ url_for('history', page=p) }}">{{ p }}</a>
+        </li>
+        {% endfor %}
+        <li class="page-item {{ 'disabled' if page >= total_pages }}">
+            <a class="page-link" href="{{ url_for('history', page=page+1) }}">Następna</a>
+        </li>
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

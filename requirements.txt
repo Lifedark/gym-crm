@@ -1,0 +1,10 @@
+Flask==3.0.0
+Flask-PyMongo==2.3.0
+Flask-Login==0.6.3
+Flask-Bcrypt==1.0.1
+qrcode[pil]==7.4.2
+Pillow==10.2.0
+python-dotenv==1.0.0
+python-barcode==0.15.1
+WTForms==3.1.1
+gunicorn==22.0.0

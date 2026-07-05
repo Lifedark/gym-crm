@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Raporty - {{ app_name }}{% endblock %}
+{% block content %}
+<h4><i class="bi bi-bar-chart"></i> Raporty</h4>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card shadow-sm bg-info text-white">
+            <div class="card-body">
+                <h6>Wejścia w tym miesiącu</h6>
+                <h2 class="fw-bold">{{ monthly_checkins }}</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header"><h6 class="mb-0">Klienci według karnetu</h6></div>
+            <div class="card-body">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Karnet</th>
+                            <th>Liczba klientów</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for mbt in members_by_type %}
+                        <tr>
+                            <td>{{ mbt.name }}</td>
+                            <td><strong>{{ mbt.count }}</strong></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header"><h6 class="mb-0">Wejścia w ostatnich 7 dniach</h6></div>
+            <div class="card-body">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Dzień</th>
+                            <th>Wejścia</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for d in daily_data %}
+                        <tr>
+                            <td>{{ d.date }}</td>
+                            <td>
+                                <strong>{{ d.count }}</strong>
+                                <div class="progress mt-1" style="height: 6px;">
+                                    <div class="progress-bar bg-success" style="width: {{ (d.count / (daily_data|max(attribute='count')).count * 100) if daily_data else 0 }}%"></div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header"><h6 class="mb-0">Top 10 najczęściej odwiedzających</h6></div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th>Klient</th>
+                            <th>Liczba wejść</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tm in top_members %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td>
+                                {% if tm.member %}
+                                <a href="{{ url_for('member_detail', member_id=tm._id) }}">{{ tm.member.name }}</a>
+                                {% else %}
+                                <span class="text-muted">Usunięty</span>
+                                {% endif %}
+                            </td>
+                            <td><strong>{{ tm.count }}</strong></td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="3" class="text-center text-muted">Brak danych</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

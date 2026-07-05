@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Klienci - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4><i class="bi bi-people"></i> Klienci</h4>
+    <a href="{{ url_for('member_add') }}" class="btn btn-primary">
+        <i class="bi bi-person-plus"></i> Dodaj klienta
+    </a>
+</div>
+
+<form method="GET" class="row g-2 mb-3">
+    <div class="col-md-5">
+        <input type="text" name="search" class="form-control" placeholder="Szukaj po nazwie, telefonie, email lub kodzie QR..." value="{{ search }}">
+    </div>
+    <div class="col-md-3">
+        <select name="status" class="form-select">
+            <option value="">Wszystkie statusy</option>
+            <option value="active" {{ 'selected' if status_filter == 'active' }}>Aktywny</option>
+            <option value="expired" {{ 'selected' if status_filter == 'expired' }}>Wygasły</option>
+            <option value="frozen" {{ 'selected' if status_filter == 'frozen' }}>Zamrożony</option>
+        </select>
+    </div>
+    <div class="col-md-3">
+        <select name="type" class="form-select">
+            <option value="">Wszystkie karnety</option>
+            {% for t in types %}
+            <option value="{{ t._id }}" {{ 'selected' if type_filter == t._id|string }}>{{ t.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-1">
+        <button type="submit" class="btn btn-outline-secondary w-100"><i class="bi bi-search"></i></button>
+    </div>
+</form>
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Klient</th>
+                        <th>Telefon</th>
+                        <th>Karnet</th>
+                        <th>Status</th>
+                        <th>Ważny do</th>
+                        <th>Wejścia</th>
+                        <th>Akcje</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in members %}
+                    <tr>
+                        <td>
+                            <a href="{{ url_for('member_detail', member_id=item.member._id) }}" class="fw-semibold text-decoration-none">
+                                {{ item.member.name }}
+                            </a>
+                        </td>
+                        <td>{{ item.member.phone or '-' }}</td>
+                        <td>{{ item.type.name if item.type else 'Brak' }}</td>
+                        <td>
+                            {% if item.status == 'active' %}
+                                <span class="badge bg-success">Aktywny</span>
+                            {% elif item.status == 'expired' %}
+                                <span class="badge bg-danger">Wygasły</span>
+                            {% elif item.status == 'frozen' %}
+                                <span class="badge bg-secondary">Zamrożony</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.member.end_date %}
+                                {{ item.member.end_date|datefmt }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.member.entries_left is not none %}
+                                {{ item.member.entries_left }}/{{ item.member.total_entries }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{{ url_for('member_detail', member_id=item.member._id) }}" class="btn btn-sm btn-outline-info" title="Szczegóły">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <a href="{{ url_for('member_edit', member_id=item.member._id) }}" class="btn btn-sm btn-outline-warning" title="Edytuj">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">
+                            <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                            Brak klientów
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

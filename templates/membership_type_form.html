@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edytuj' if mt else 'Dodaj' }} karnet - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-{{ 'pencil' if mt else 'plus-circle' }}"></i>
+                    {{ 'Edytuj' if mt else 'Dodaj' }} karnet
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label class="form-label">Nazwa karnetu *</label>
+                        <input type="text" name="name" class="form-control" required
+                               value="{{ mt.name if mt else '' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Typ</label>
+                        <select name="type" class="form-select" id="typeSelect" onchange="toggleType()">
+                            <option value="period" {{ 'selected' if mt and mt.type == 'period' }}>Okresowy (dni)</option>
+                            <option value="entries" {{ 'selected' if mt and mt.type == 'entries' }}>Na wejścia</option>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="durationField">
+                        <label class="form-label">Liczba dni</label>
+                        <input type="number" name="duration_days" class="form-control" min="1"
+                               value="{{ mt.duration_days if mt and mt.type == 'period' else 30 }}">
+                    </div>
+                    <div class="mb-3" id="entriesField" style="display:none">
+                        <label class="form-label">Liczba wejść</label>
+                        <input type="number" name="entries_count" class="form-control" min="1"
+                               value="{{ mt.entries_count if mt and mt.type == 'entries' else 10 }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Cena (zł)</label>
+                        <input type="number" name="price" class="form-control" step="0.01" min="0"
+                               value="{{ mt.price if mt else '0' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Opis</label>
+                        <textarea name="description" class="form-control" rows="3">{{ mt.description if mt else '' }}</textarea>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="bi bi-check-lg"></i> {{ 'Zapisz zmiany' if mt else 'Dodaj karnet' }}
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleType() {
+    var t = document.getElementById('typeSelect').value;
+    document.getElementById('durationField').style.display = t === 'period' ? 'block' : 'none';
+    document.getElementById('entriesField').style.display = t === 'entries' ? 'block' : 'none';
+}
+toggleType();
+</script>
+{% endblock %}

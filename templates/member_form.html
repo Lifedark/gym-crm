@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edytuj' if member else 'Dodaj' }} klienta - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-{{ 'pencil' if member else 'person-plus' }}"></i>
+                    {{ 'Edytuj' if member else 'Dodaj' }} klienta
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Imię i nazwisko *</label>
+                            <input type="text" name="name" class="form-control" required
+                                   value="{{ member.name if member else '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Telefon</label>
+                            <input type="text" name="phone" class="form-control"
+                                   value="{{ member.phone if member else '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Email</label>
+                            <input type="email" name="email" class="form-control"
+                                   value="{{ member.email if member else '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Karnet</label>
+                            <select name="membership_type_id" class="form-select">
+                                <option value="">-- Wybierz --</option>
+                                {% for t in types %}
+                                <option value="{{ t._id }}"
+                                    {{ 'selected' if member and member.membership_type_id == t._id|string }}>
+                                    {{ t.name }} - {{ t.price|currency }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% if member %}
+                        <div class="col-md-6">
+                            <label class="form-label">Status</label>
+                            <select name="status" class="form-select">
+                                <option value="active" {{ 'selected' if member.status == 'active' }}>Aktywny</option>
+                                <option value="expired" {{ 'selected' if member.status == 'expired' }}>Wygasły</option>
+                                <option value="frozen" {{ 'selected' if member.status == 'frozen' }}>Zamrożony</option>
+                            </select>
+                        </div>
+                        {% endif %}
+                        <div class="col-12">
+                            <label class="form-label">Notatki</label>
+                            <textarea name="notes" class="form-control" rows="3">{{ member.notes if member else '' }}</textarea>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-lg"></i> {{ 'Zapisz zmiany' if member else 'Dodaj klienta' }}
+                        </button>
+                        <a href="{{ url_for('members') }}" class="btn btn-outline-secondary">Anuluj</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
