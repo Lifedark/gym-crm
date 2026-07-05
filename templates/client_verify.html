@@ -12,6 +12,14 @@
 <body>
     <canvas id="particle-canvas"></canvas>
 
+    <div class="position-fixed top-0 start-0 p-3 z-3" style="animation: fadeInScale 0.6s ease 0.3s both;">
+        <a href="/login" style="display:inline-flex;align-items:center;gap:8px;color:rgba(255,255,255,0.3);text-decoration:none;font-size:0.82rem;transition:all 0.3s;padding:8px 16px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);"
+           onmouseover="this.style.color='#a855f7';this.style.borderColor='rgba(168,85,247,0.2)'"
+           onmouseout="this.style.color='rgba(255,255,255,0.3)';this.style.borderColor='rgba(255,255,255,0.04)'">
+            <i class="bi bi-shield-person"></i> Panel pracownika <i class="bi bi-arrow-right" style="font-size:0.7rem;"></i>
+        </a>
+    </div>
+
     <div class="min-vh-100 d-flex align-items-center justify-content-center px-3">
         <div class="card" style="max-width: 440px; width: 100%; animation: fadeInScale 0.6s ease;">
             <div class="card-body text-center p-5">
@@ -26,10 +34,17 @@
                 {% with messages = get_flashed_messages(with_categories=true) %}
                     {% if messages %}
                         {% for category, message in messages %}
-                            <div class="alert alert-{{ category }} py-2 mb-3" style="font-size: 0.85rem;">{{ message }}</div>
+                            <div class="alert alert-{{ category }} py-2 mb-3" style="font-size: 0.85rem; border-radius: 12px; border: none;">{{ message }}</div>
                         {% endfor %}
                     {% endif %}
                 {% endwith %}
+
+                {% if session.get('dev_code') %}
+                <div style="background: rgba(168,85,247,0.08); border: 1px solid rgba(168,85,247,0.15); border-radius: 12px; padding: 12px; margin-bottom: 16px;">
+                    <small style="color: var(--text3); display: block; margin-bottom: 4px;">🔧 Tryb developerski — Twój kod:</small>
+                    <span style="font-size: 1.4rem; font-weight: 800; letter-spacing: 6px; color: var(--accent2);">{{ session.dev_code }}</span>
+                </div>
+                {% endif %}
 
                 <form method="POST" id="codeForm">
                     <div class="d-flex gap-2 justify-content-center mb-4" id="codeInputs">

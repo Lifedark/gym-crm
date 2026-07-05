@@ -12,11 +12,35 @@
 <body>
     <canvas id="particle-canvas"></canvas>
 
-    <div class="position-fixed top-0 start-0 p-3 z-3">
-        <a href="/login" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-person-badge"></i> Panel pracownika
+    <div class="position-fixed top-0 start-0 p-3 z-3" style="animation: fadeInScale 0.6s ease 0.3s both;">
+        <a href="/login" class="client-link">
+            <i class="bi bi-shield-person"></i>
+            Panel pracownika
+            <i class="bi bi-arrow-right" style="font-size: 0.7rem;"></i>
         </a>
     </div>
+    <style>
+        .client-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: rgba(255,255,255,0.3);
+            text-decoration: none;
+            font-size: 0.82rem;
+            transition: all 0.3s;
+            padding: 8px 16px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.04);
+        }
+        .client-link:hover {
+            color: #a855f7;
+            border-color: rgba(168,85,247,0.2);
+            background: rgba(168,85,247,0.04);
+            transform: translateY(-1px);
+        }
+        .client-link i { transition: transform 0.3s; }
+        .client-link:hover i:last-child { transform: translateX(4px); }
+    </style>
 
     <div class="min-vh-100 d-flex align-items-center justify-content-center px-3">
         <div class="card" style="max-width: 420px; width: 100%; animation: fadeInScale 0.6s ease;">
